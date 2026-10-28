@@ -31,6 +31,18 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
-# Add your mod's dependencies below. Use type = "optional" for anything the mod
-# works without, and gate the code that touches it (mixins, registrations) so it
-# no-ops when the dependency is absent.
+# The slot and the release/recall keybind are the mod; neither works without
+# Pseudocore (cores, releaseContained, TensuraBridge) or Curios (the slot).
+[[dependencies.${mod_id}]]
+modId = "pseudocore"
+type = "required"
+versionRange = "[${pseudocore_version},)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "curios"
+type = "required"
+versionRange = "[9,)"
+ordering = "AFTER"
+side = "BOTH"

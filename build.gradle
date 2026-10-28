@@ -75,6 +75,7 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
             mod_version            : mod_version,
             mod_authors            : mod_authors,
             mod_description        : mod_description,
+            pseudocore_version     : pseudocore_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -93,13 +94,57 @@ tasks.withType(JavaCompile).configureEach {
 // JUnit suite: the CI junit check grades it and refuses to pass on an empty
 // run, so this configuration must stay wired in every derived repo.
 repositories {
+    // CurseMaven - resolves mod jars by CurseForge project + file id. Curios
+    // and the Tensura/Gear Evolution closure come from here, so a clean
+    // checkout (and CI) resolves every jar without a local folder.
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+    // Pseudocore resolves from its own GitHub Packages maven: it is not on
+    // CurseForge or Modrinth (alphas are GitHub-only by its release policy),
+    // and it publishes there on every release. GH Packages reads require
+    // credentials: the workflow token in CI, gpr.user / gpr.key locally.
+    maven {
+        name = 'GitHubPackages'
+        url = uri('https://maven.pkg.github.com/HexaHexes/pseudocore')
+        credentials {
+            username = System.getenv('GITHUB_ACTOR') ?: project.findProperty('gpr.user')
+            password = System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')
+        }
+    }
     mavenCentral()
 }
 
+configurations {
+    // Runtime closure for the GameTest run: staged into run/mods by
+    // prepareGametestMods, exactly like the rest of the org's mod repos.
+    gametestMods
+}
+
 dependencies {
+    // The mod this addon is built on: the slot logic calls releaseContained,
+    // tryCapture and TensuraBridge. Never bundled.
+    compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
+    // The slot this mod adds. Never bundled.
+    compileOnly "curse.maven:curios-309927:${curios_file_id}"
+
+    // For the run-only mods folder: Pseudocore from GitHub Packages, Curios
+    // from CurseMaven - the smoke test needs both present so the mod's own
+    // required dependencies resolve at FML load.
+    gametestMods "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
+    gametestMods "curse.maven:curios-309927:${curios_file_id}"
+
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // The chain data is JSON; Minecraft supplies Gson at runtime, the plain
+    // JUnit classpath does not. Same version Minecraft ships.
+    testImplementation 'com.google.code.gson:gson:2.10.1'
+    // Logging runs through slf4j, which Minecraft supplies at runtime but
+    // which is not on the plain JUnit classpath.
+    testImplementation 'org.slf4j:slf4j-api:2.0.13'
 }
 
 test {
@@ -111,7 +156,16 @@ test {
 // Grade the run on the log summary, not the exit code: the GameTestServer prints
 // "All N required tests passed :)" when every required test succeeds. Keep
 // expectedTests in sync with the @GameTest methods in src/gametest.
+// Stage the pack's dependency mod jars into the run's production-style mods/
+// folder, where FML's mods-folder locator finds them exactly like in the pack.
+tasks.register('prepareGametestMods', Sync) {
+    from configurations.gametestMods
+    into 'run/mods'
+}
+
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+    dependsOn 'prepareGametestMods'
+
     def expectedTests = 1
     doLast {
         def log = file('run/logs/latest.log')
@@ -168,7 +222,7 @@ publishing {
     repositories {
         maven {
             name = 'GitHubPackages'
-            url = uri('https://maven.pkg.github.com/HexaHexes/neoforge-mod-template')
+            url = uri('https://maven.pkg.github.com/HexaHexes/pseudocore-curios')
             credentials {
                 username = System.getenv('GITHUB_ACTOR') ?: project.findProperty('gpr.user')
                 password = System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')

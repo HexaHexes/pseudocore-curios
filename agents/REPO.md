@@ -1,23 +1,48 @@
-# Repo rules — <repo name>
+# Repo rules - pseudocore-curios
 
 Repo-specific rules and notes. The org-wide `AGENTS.md` beside this file is
 maintained in [`neoforge-mod-template`](https://github.com/HexaHexes/neoforge-mod-template)
-and pulled in verbatim — **never hand-edit it.** Everything in this file is this
+and pulled in verbatim - **never hand-edit it.** Everything in this file is this
 repo's own and is edited freely; keep it aligned with the org rules rather than
 restating them.
 
-**Repo:** `HexaHexes/<repo-name>` · **Mod ID:** `<mod_id>` · **Branch:** `main`
-**Platform:** Minecraft 1.21.1 / NeoForge 21.1.259 / JDK 21 · **Jar:** `build/libs/<mod_id>-<version>.jar`
+**Repo:** `HexaHexes/pseudocore-curios` - **Mod ID:** `pseudocore_curios` - **Branch:** `main`
+**Platform:** Minecraft 1.21.1 / NeoForge 21.1.259 / JDK 21
+**Jar:** `build/libs/pseudocore_curios-<version>.jar`
 
-One-paragraph description of what this mod is and what it changes in the game.
+The Curios-slot companion to Pseudocore: a slot that holds a core, a rebindable
+hotkey that releases the stored mob at the player and recalls it through the
+normal capture paths, and the Tensura-ecosystem data for cores (Gear Evolution
+`addon_chains` for every tier). By pack decision this repo - not base
+Pseudocore - carries all Tensura/Gear Evolution integration, mirroring how
+wallet chains ship in lightmans-tensura.
 
 **Dependencies**
-- Required: Minecraft, NeoForge.
-- Optional: list any dependency the mod works without, and how the code gates it.
+- Required: Minecraft, NeoForge, Pseudocore, Curios.
+- Pseudocore resolves from `maven.pkg.github.com/HexaHexes/pseudocore` - it is
+  not on CurseForge or Modrinth (its alphas are GitHub-only), so CI passes
+  `GITHUB_TOKEN` with `packages: read` and a local build needs `gpr.user` /
+  `gpr.key`. Curios, Gear Evolution and the Tensura closure resolve from
+  CurseMaven, pinned by `*_file_id` in `gradle.properties`.
+- Optional: Tensura: Reincarnated and Gear Evolution - the chain JSONs are
+  inert without their reader; code paths gate through Pseudocore's
+  `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` — `<ClassName>` (1 test). `expectedTests = 1`
-in `build.gradle` must match the `@GameTest` count.
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (1 test).
+`expectedTests = 1` in `build.gradle` must match the `@GameTest` count.
+Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
+from the `gametestMods` configuration.
 
 **Gotchas**
-- Note anything a future edit could break: mixin targets, version-file coupling,
-  tag overrides, or a dependency that is optional in the toml but hard in the code.
+- `mod_id` contains underscores while the Java package is
+  `org.bitwisemadness.pseudocore.curios` - do not "fix" one to match the other;
+  the checklist in the template README treats them as separate fields.
+- The mixin config is registered but empty; any mixin added here must also set
+  the `package` field in `pseudocore_curios.mixins.json`.
+- Capture/recall deliberately reuse Pseudocore's `tryCapture` /
+  `interactLivingEntity` rather than bypassing them - a "convenience" shortcut
+  would skip the anti-theft rule and tier gates.
+- The Gear Evolution retention risk (does a captured mob survive an evolution
+  swap?) is tracked in this repo's issues; the chain data ships first because
+  it is inert without Gear Evolution, while the NBT test needs GE on the
+  gametest classpath.
