@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:pure_magisteel_pseudocore",
+  "minEP": 225000,
+  "maxEP": 300000,
+  "epGain": 0.004,
+  "evolution": "pseudocore:mithril_pseudocore"
+}

@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:iron_pseudocore",
+  "minEP": 1500,
+  "maxEP": 7500,
+  "epGain": 0.001,
+  "evolution": "pseudocore:silver_pseudocore"
+}
