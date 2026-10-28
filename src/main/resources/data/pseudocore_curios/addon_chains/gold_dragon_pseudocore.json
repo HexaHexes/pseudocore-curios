@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:gold_dragon_pseudocore",
+  "minEP": 525000,
+  "maxEP": 825000,
+  "epGain": 0.005,
+  "evolution": "pseudocore:netherite_dragon_pseudocore"
+}

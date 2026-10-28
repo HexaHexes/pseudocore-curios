@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:adamantite_pseudocore",
+  "minEP": 750000,
+  "maxEP": 1500000,
+  "epGain": 0.006,
+  "evolution": "pseudocore:hihiirokane_pseudocore"
+}

@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:orichalcum_pseudocore",
+  "minEP": 450000,
+  "maxEP": 750000,
+  "epGain": 0.005,
+  "evolution": "pseudocore:adamantite_pseudocore"
+}

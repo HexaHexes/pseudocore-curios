@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:netherite_pseudocore",
+  "minEP": 37500,
+  "maxEP": 112500,
+  "epGain": 0.003,
+  "evolution": "pseudocore:low_magisteel_pseudocore"
+}

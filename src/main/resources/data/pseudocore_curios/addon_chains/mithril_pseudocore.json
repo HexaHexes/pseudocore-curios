@@ -1,0 +1,7 @@
+{
+  "item": "pseudocore:mithril_pseudocore",
+  "minEP": 300000,
+  "maxEP": 450000,
+  "epGain": 0.005,
+  "evolution": "pseudocore:orichalcum_pseudocore"
+}
