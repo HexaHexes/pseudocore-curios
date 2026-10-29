@@ -27,10 +27,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  # Pseudocore resolves from the org's GitHub Packages maven (it is not on
-  # CurseForge or Modrinth), and GH Packages reads are authenticated with the
-  # workflow token passed to gradle below.
-  packages: read
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
@@ -52,9 +48,6 @@ jobs:
 
       - name: Build and run JUnit suite
         run: ./gradlew build --no-daemon --stacktrace
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # gradlew build reports SUCCESS when there are no test sources at all -
       # the :test task is simply NO-SOURCE. Assert a non-zero count so the check
@@ -183,9 +176,6 @@ jobs:
           set +e
           ./gradlew runGameTestServer --no-daemon 2>&1 | tee gametest.log
           echo "gradle exit code: $?" >> gametest.log
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Assert GameTests ran and passed
         run: |
@@ -241,6 +231,7 @@ jobs:
       - name: SpotBugs
         env:
           PACKAGE_READ_TOKEN: ${{ secrets.PACKAGE_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGE_READ_TOKEN || github.token }}
         run: ./gradlew spotbugsMain --no-daemon --stacktrace
 
       # Report-only during the grace period: violations print in the log
@@ -249,6 +240,7 @@ jobs:
       - name: Spotless check
         env:
           PACKAGE_READ_TOKEN: ${{ secrets.PACKAGE_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGE_READ_TOKEN || github.token }}
         run: ./gradlew spotlessCheck --no-daemon --stacktrace
         continue-on-error: true
 
