@@ -1,10 +1,10 @@
 # Pseudocore Curios
 
-The companion addon to [Pseudocore](https://github.com/HexaHexes/pseudocore):
-keep a core on your belt through Curios, press a key to release its stored mob
-at your position, and press it again to recall that mob through the normal
-capture gates. It also carries the Pseudocore ecosystem's Tensura-side data -
-Gear Evolution chains covering every core tier - so Tensura and Gear Evolution
+The companion addon to [Pseudocore](https://github.com/HexaHexes/pseudocore).
+Keep a core on your belt through Curios, press a key to release its stored mob at
+your position, and press it again to recall that mob through the normal capture
+gates. The addon also carries the Pseudocore ecosystem's Tensura-side data
+(Gear Evolution chains covering every core tier), so Tensura and Gear Evolution
 integration lives here rather than in base Pseudocore, mirroring how the wallet
 chains ship in lightmans-tensura rather than in Lightman's Currency.
 
@@ -12,11 +12,10 @@ chains ship in lightmans-tensura rather than in Lightman's Currency.
 
 - A Curios slot that accepts Pseudocore cores (beast and dragon lines).
 - A rebindable hotkey (default the `` ` `` key) that releases the core's stored
-  mob at the player's position, and recalls it again - recall reuses
-  Pseudocore's capture paths so every gate (ownership, tier limits, blacklist)
-  re-applies.
-- Gear Evolution `addon_chains` data for all seventeen core tiers, following
-  the same setup Lightman's wallets and Traveler Tool Belts already use.
+  mob at the player's position, and recalls it again. Recall reuses Pseudocore's
+  capture paths, so every gate (ownership, tier limits, blacklist) re-applies.
+- Gear Evolution `addon_chains` data for all seventeen core tiers, following the
+  same setup Lightman's wallets and Traveler Tool Belts already use.
 
 ## Dependencies
 
