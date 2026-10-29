@@ -19,6 +19,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
@@ -33,6 +34,8 @@ import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
+import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.UUID;
 
@@ -246,6 +249,40 @@ public final class PseudocoreCuriosGameTests {
         LinkageManager.forget(player, last);
         check(LinkageManager.find(player, last) == null,
                 "forget must drop a consumed record (#18)");
+
+        helper.succeed();
+    }
+
+    /**
+     * The Curios slot itself (#7): players get one {@code pseudocore} slot of
+     * size 1, it accepts a core, and it refuses anything else. The accept
+     * half pins the whole data chain at once - slot definition loaded from
+     * {@code curios/slots}, player grant from {@code curios/entities}, and
+     * the {@code curios:tag} validator reading {@code curios:pseudocore},
+     * whose membership comes from this addon's tag file. A typo in any of
+     * the three files fails one of the checks below with its own message.
+     */
+    @GameTest(template = "empty")
+    public static void slotGrantsAndValidatesCores(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+
+        var inventory = CuriosApi.getCuriosInventory(player);
+        check(inventory.isPresent(), "the joined player must have a Curios inventory (#7)");
+        check(inventory.get().getCurios().containsKey("pseudocore"),
+                "the entity grant must put a pseudocore slot on players (#7)");
+
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        // The two flags are rendering context (visible / cosmetic), not
+        // validity inputs - false/false is a plain visible-slot context.
+        var slotContext = new SlotContext("pseudocore", player, 0, false, false);
+        var helper2 = CuriosApi.getCuriosHelper();
+        check(helper2.isStackValid(slotContext, new ItemStack(copper)),
+                "the slot must accept a core - the curios:tag validator must see it in curios:pseudocore (#7)");
+        check(!helper2.isStackValid(slotContext, new ItemStack(Items.STICK)),
+                "the slot must reject a non-core (#7)");
 
         helper.succeed();
     }
