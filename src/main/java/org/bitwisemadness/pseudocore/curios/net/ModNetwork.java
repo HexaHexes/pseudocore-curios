@@ -26,5 +26,9 @@ public final class ModNetwork {
                 ReleaseRecallC2S.TYPE,
                 ReleaseRecallC2S.STREAM_CODEC,
                 ReleaseRecallC2S::handle);
+        registrar.playToClient(
+                UnreachableRecallS2C.TYPE,
+                UnreachableRecallS2C.STREAM_CODEC,
+                UnreachableRecallS2C::handle);
     }
 }
