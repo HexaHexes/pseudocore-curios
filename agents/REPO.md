@@ -28,9 +28,12 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (5 tests:
-smoke, the Gear Evolution NBT-retention gate, linkage stamp/tag/record, the
-unload position refresh, and the linkage cap/forget). `expectedTests = 5` in
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (12 tests:
+smoke, the Gear Evolution NBT-retention gate, the linkage stamp/tag/record,
+the unload position refresh, the linkage cap/forget, the Curios slot
+accept/reject pair, the hotkey refusal/release pair, the recall quartet
+(capture, unreachable, wrong-core, anti-theft), and the waypoint payload
+assertion folded into the unreachable test). `expectedTests = 12` in
 `build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
 from the `gametestMods` configuration.
@@ -46,6 +49,15 @@ from the `gametestMods` configuration.
   delayed callback never times out on its own and holds the batch open
   forever (CI's `timeout-minutes` is the outer belt, the annotation is the
   inner one).
+- Every mock player is placed at the world spawn, so concurrent tests share
+  one activity area: entity assertions must resolve **by the record's
+  UUID** (`level.getEntity(record.mobUuid())`), never by an AABB scan plus
+  `get(0)` - a scan picks up sibling tests' released mobs (proven: one
+  test's discard-by-scan starved another test's recall of its mob). For the
+  same reason the mock connection's ad-hoc channel whitelist needs this
+  addon's own clientbound payload ids added (`unreachable_recall`) - any
+  `sendToPlayer` of an unlisted payload throws
+  `Payload ... may not be sent to the client`.
 - The mixin config is registered but empty; any mixin added here must also set
   the `package` field in `pseudocore_curios.mixins.json`.
 - Capture/recall deliberately reuse Pseudocore's `tryCapture` /
