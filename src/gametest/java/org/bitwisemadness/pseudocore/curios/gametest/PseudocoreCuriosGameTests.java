@@ -27,6 +27,7 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
 import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
@@ -283,6 +284,88 @@ public final class PseudocoreCuriosGameTests {
                 "the slot must accept a core - the curios:tag validator must see it in curios:pseudocore (#7)");
         check(!helper2.isStackValid(slotContext, new ItemStack(Items.STICK)),
                 "the slot must reject a non-core (#7)");
+
+        helper.succeed();
+    }
+
+    /**
+     * The packet handler's three refusals (#11): empty slot, non-core in the
+     * slot, sender without the slot. Each press is driven through the same
+     * {@link ReleaseRecallAction#handle} the payload calls, so the assertions
+     * read the exact refusal the player would be told.
+     */
+    @GameTest(template = "empty")
+    public static void hotkeyRefusesBadSlotStates(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
+        check(inventory != null, "the joined player must have a Curios inventory (#11)");
+        check(inventory.getCurios().get(PseudocoreCurios.SLOT_ID) != null,
+                "the entity grant must put a pseudocore slot on players (#7)");
+
+        // Fresh slot: nothing in it yet.
+        check(ReleaseRecallAction.handle(player) == ReleaseRecallAction.Refusal.NO_CORE,
+                "an empty slot must refuse with NO_CORE (#11)");
+
+        // Something that is not a core. The raw handler write bypasses GUI
+        // validation on purpose: the server must refuse by ITS own check, not
+        // by Curios's - the packet path is not the GUI path.
+        inventory.getCurios().get(PseudocoreCurios.SLOT_ID)
+                .getStacks().setStackInSlot(0, new ItemStack(Items.STICK));
+        check(ReleaseRecallAction.handle(player) == ReleaseRecallAction.Refusal.NOT_CORE,
+                "a non-core in the slot must refuse with NOT_CORE (#11)");
+
+        // Then the slot itself disappears: rebuild the inventory map without
+        // it (setCurios is the server->client sync path, so this is the real
+        // shape of a sender whose grant is absent).
+        var remaining = new java.util.HashMap<>(inventory.getCurios());
+        remaining.remove(PseudocoreCurios.SLOT_ID);
+        inventory.setCurios(remaining);
+        check(ReleaseRecallAction.handle(player) == ReleaseRecallAction.Refusal.NO_SLOT,
+                "a sender without the slot must refuse with NO_SLOT (#11)");
+
+        helper.succeed();
+    }
+
+    /**
+     * The hotkey's happy path plus its spam bar (#11): a press releases the
+     * filled core in the slot through the Phase-1 API - emptied stack, mob
+     * standing at the player - and an immediate second press hits the
+     * cooldown. Beast line only, matching the classpath rule the retention
+     * test documents: dragon cores need Ice and Fire, which the CI
+     * gametest environment does not ship.
+     */
+    @GameTest(template = "empty")
+    public static void hotkeyReleasesCoreAndEnforcesCooldown(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a filled core to release");
+
+        var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
+        check(inventory != null, "the joined player must have a Curios inventory (#11)");
+        inventory.getCurios().get(PseudocoreCurios.SLOT_ID)
+                .getStacks().setStackInSlot(0, stack);
+
+        check(ReleaseRecallAction.handle(player) == null,
+                "a filled core in the slot must release (#11)");
+        ItemStack inSlot = inventory.getCurios().get(PseudocoreCurios.SLOT_ID)
+                .getStacks().getStackInSlot(0);
+        check(inSlot.get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                "the press must empty the slot's core (#11)");
+        // The released copy stands where the press put it: at the player's
+        // feet (the original was discarded by capture, so any cow here is it).
+        var released = helper.getLevel().getEntitiesOfClass(Cow.class,
+                new AABB(player.position(), player.position()).inflate(4));
+        check(!released.isEmpty(),
+                "the mob must spawn at the player on a packet release (#11)");
+
+        check(ReleaseRecallAction.handle(player) == ReleaseRecallAction.Refusal.COOLDOWN,
+                "an immediate second press must hit the cooldown (#11)");
 
         helper.succeed();
     }
