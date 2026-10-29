@@ -94,6 +94,8 @@ public final class ReleaseRecallAction {
         COOLDOWN("pseudocore_curios.message.cooldown"),
         NOT_LINKED("pseudocore_curios.message.not_linked"),
         UNREACHABLE("pseudocore_curios.message.unreachable"),
+        /** The core holds preserved death data (#14) - nothing to release. */
+        HAS_DEAD("pseudocore_curios.message.has_dead"),
         /**
          * A gate already spoke for itself - a capture/release gate's own
          * actionbar line, or IaF's click-path silence on an ownership
@@ -178,8 +180,15 @@ public final class ReleaseRecallAction {
             // API's own gates; the press consumed the cooldown above either way.
             return released ? null : Refusal.GATED;
         }
-        // Empty core: the recall flow (#12). Death-preserved state (#14) will
-        // report here instead, once that component exists.
+        // Death-preserve state (#14): a dead-record core reports itself and
+        // never releases (nothing live to release) nor recalls (the mob is
+        // gone - the record could only answer UNREACHABLE). Live storage
+        // plus stale death data never reaches this branch: the beast/dragon
+        // check above wins - the issue's "counts as filled" rule.
+        if (stack.has(org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents.DEAD_MOB.get())) {
+            return refuse(player, Refusal.HAS_DEAD, stack.getHoverName());
+        }
+        // Empty core: the recall flow (#12).
         return recall(player, stack);
     }
 

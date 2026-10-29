@@ -39,6 +39,18 @@ public final class ModLinkageComponents {
                     .networkSynchronized(StreamCodec.composite(
                             ByteBufCodecs.STRING_UTF8, UUID::toString, UUID::fromString)));
 
+    /**
+     * The death-preserve record (#14): same registration channel as the
+     * linkage stamp - this addon's own component, invisible to base
+     * pseudocore's filled/empty contract.
+     */
+    public static final DeferredHolder<DataComponentType<?>,
+            DataComponentType<org.bitwisemadness.pseudocore.curios.death.DeadMobComponent>> DEAD_MOB =
+            DATA_COMPONENTS.registerComponentType("dead_mob", builder -> builder
+                    .persistent(org.bitwisemadness.pseudocore.curios.death.DeadMobComponent.CODEC)
+                    .networkSynchronized(
+                            org.bitwisemadness.pseudocore.curios.death.DeadMobComponent.STREAM_CODEC));
+
     public static void register() {
     }
 

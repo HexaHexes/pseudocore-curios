@@ -29,6 +29,8 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
+import org.bitwisemadness.pseudocore.curios.death.DeadMobComponent;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
@@ -640,6 +642,208 @@ public final class PseudocoreCuriosGameTests {
         });
     }
 
+    /**
+     * #14 gate (a): off by default, deaths stay deaths - same atomic body
+     * as every config-mutating test here (a gametest function runs to
+     * completion within its tick unless it schedules, so sibling tests'
+     * flip windows cannot interleave).
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void deathSaveOffByDefaultLeavesTheKillAlone(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        check(!PseudocoreCuriosConfig.deathSaveEnabled(),
+                "deathSave must default to off (#14)");
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack stack = releasedSlotCore(helper, player, cow);
+        UUID mob = stampedMob(helper, player, stack);
+
+        var doomed = helper.getLevel().getEntity(mob);
+        check(doomed != null, "the released cow must exist before the hit");
+        doomed.hurt(player.damageSources().playerAttack(player), 20.0F);
+
+        // Death state, not storage absence: a naturally dead mob lingers in
+        // the level for its death animation (capture's discard is immediate,
+        // which is why the preserve tests may assert absence).
+        check(doomed instanceof net.minecraft.world.entity.LivingEntity living
+                        && living.isDeadOrDying(),
+                "with the feature off the cow must simply die");
+        check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null
+                        && !slotStack(player).has(ModDataComponents.CONTAINED_MOB.get()),
+                "with the feature off nothing may be written into the core");
+
+        helper.succeed();
+    }
+
+    /**
+     * #14 gate (b): the preserve path end to end - configured source,
+     * lethal hit, capture-first, migration - plus the press reporting the
+     * dead state instead of releasing (delayed hop runs after the config
+     * is restored; the press never reads the switch).
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void deathSavePreservesIntoTheSlotCore(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack stack = releasedSlotCore(helper, player, cow);
+        UUID mob = stampedMob(helper, player, stack);
+
+        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
+        try {
+            helper.getLevel().getEntity(mob)
+                    .hurt(player.damageSources().playerAttack(player), 20.0F);
+
+            check(helper.getLevel().getEntity(mob) == null,
+                    "the tracked mob must leave the world - captured, not merely dead");
+            DeadMobComponent dead = slotStack(player).get(ModLinkageComponents.DEAD_MOB.get());
+            check(dead != null,
+                    "the slot core must carry the death record (#14)");
+            check(dead.entityUuid().toString().equals(mob.toString()),
+                    "the record must name the tracked mob, got " + dead.entityUuid()
+                            + " vs " + mob);
+            check(!slotStack(player).has(ModDataComponents.CONTAINED_MOB.get()),
+                    "the live half must be stripped - base sees an empty core");
+            check(dead.damageType().toString().equals("minecraft:player_attack"),
+                    "the whitelisted source must be recorded, got " + dead.damageType());
+        } finally {
+            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
+        }
+
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            var refusal = ReleaseRecallAction.handle(player);
+            check(refusal == ReleaseRecallAction.Refusal.HAS_DEAD,
+                    "a dead-record core must report HAS_DEAD instead of releasing or recalling (#14), got "
+                            + refusal);
+            helper.succeed();
+        });
+    }
+
+    /** #14 gate (c): an unwhitelisted source just kills - nothing written. */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void deathSaveIgnoresUnwhitelistedSources(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack stack = releasedSlotCore(helper, player, cow);
+        UUID mob = stampedMob(helper, player, stack);
+
+        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
+        try {
+            var doomed = helper.getLevel().getEntity(mob);
+            check(doomed != null, "the released cow must exist before the hit");
+            // cactus is a real, non-whitelisted type - the whitelist, not
+            // the master switch, is what this pins.
+            doomed.hurt(helper.getLevel().damageSources().cactus(), 20.0F);
+            check(doomed instanceof net.minecraft.world.entity.LivingEntity living
+                            && living.isDeadOrDying(),
+                    "a non-whitelisted source must kill normally even when enabled");
+            check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null,
+                    "a non-whitelisted source must never write the death record");
+        } finally {
+            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
+        }
+
+        helper.succeed();
+    }
+
+    /**
+     * #14 gate (d): linkage strictness with the widening on - only the
+     * core that released the mob may receive it. The wrong-stamped core
+     * sits in the slot (spec: "a different core in the slot stays
+     * untouched"), the right one waits in the inventory.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void deathSaveFindsOnlyTheLinkageCore(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack rightCore = releasedSlotCore(helper, player, cow);
+        UUID mob = stampedMob(helper, player, rightCore);
+        UUID linkage = rightCore.get(ModLinkageComponents.LINKAGE.get());
+
+        // Move the released core into the inventory, park a stranger in the slot.
+        ItemStack inSlot = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        equipInSlot(player, inSlot);
+        check(player.getInventory().add(rightCore),
+                "the released core must fit into the main inventory");
+
+        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
+        PseudocoreCuriosConfig.COMMON.deathSaveAllowNonSlotCores.set(true);
+        try {
+            helper.getLevel().getEntity(mob)
+                    .hurt(player.damageSources().playerAttack(player), 20.0F);
+
+            ItemStack found = null;
+            for (ItemStack candidate : player.getInventory().items) {
+                if (linkage.equals(candidate.get(ModLinkageComponents.LINKAGE.get()))) {
+                    found = candidate;
+                    break;
+                }
+            }
+            check(found != null && found.get(ModLinkageComponents.DEAD_MOB.get()) != null,
+                    "the linkage-matching core in the inventory must receive the mob (#14)");
+            check(inSlot.get(ModLinkageComponents.DEAD_MOB.get()) == null
+                            && !inSlot.has(ModDataComponents.CONTAINED_MOB.get()),
+                    "a different core in the slot must stay untouched (#14)");
+        } finally {
+            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
+            PseudocoreCuriosConfig.COMMON.deathSaveAllowNonSlotCores.set(false);
+        }
+
+        helper.succeed();
+    }
+
+    /** #14 gate (e): another player owns it now -> gate refuses -> death. */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void deathSaveYieldsToTheAntiTheftGate(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var wolf = helper.spawn(EntityType.WOLF, 1, 1, 1);
+        ItemStack stack = releasedSlotCore(helper, player, wolf);
+        UUID mob = stampedMob(helper, player, stack);
+        var tracked = helper.getLevel().getEntity(mob);
+        check(tracked instanceof TamableAnimal, "a wolf is tamable");
+        ((TamableAnimal) tracked).setOwnerUUID(java.util.UUID.randomUUID());
+
+        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
+        try {
+            tracked.hurt(player.damageSources().playerAttack(player), 20.0F);
+            check(tracked instanceof net.minecraft.world.entity.LivingEntity living
+                            && living.isDeadOrDying(),
+                    "the gate refuses the capture, so the wolf dies normally");
+            check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null,
+                    "a refused capture must write nothing");
+        } finally {
+            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
+        }
+
+        helper.succeed();
+    }
+
+    /**
+     * Capture into the curios slot, release through the real press: the
+     * returned stack is the emptied, linkage-stamped core sitting in the
+     * slot - the state every death test starts from.
+     */
+    private static ItemStack releasedSlotCore(GameTestHelper helper, ServerPlayer player,
+                                               net.minecraft.world.entity.LivingEntity mob) {
+        ItemStack stack = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        check(PseudocoreItem.tryCapture(player, mob, stack) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, stack);
+        check(ReleaseRecallAction.handle(player) == null,
+                "the first press must release");
+        check(stack.get(ModLinkageComponents.LINKAGE.get()) != null,
+                "release must stamp the core");
+        check(!stack.has(ModDataComponents.CONTAINED_MOB.get()),
+                "the released core must be empty of live storage");
+        return stack;
+    }
+
+    /** The released copy's UUID - the record names exactly that mob. */
+    private static UUID stampedMob(GameTestHelper helper, ServerPlayer player, ItemStack core) {
+        LinkageRecord record = LinkageManager.find(player,
+                core.get(ModLinkageComponents.LINKAGE.get()));
+        check(record != null, "release must record the mob");
+        return UUID.fromString(record.mobUuid());
+    }
+
     /** Drop a stack into the Curios slot through the raw handler write. */
     private static void equipInSlot(ServerPlayer player, ItemStack stack) {
         var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
@@ -669,6 +873,16 @@ public final class PseudocoreCuriosGameTests {
      */
     private static ServerPlayer mockPlayer(GameTestHelper helper) {
         PseudocoreCurios.LOGGER.info("retention stage: mockPlayer building");
+        // pseudocore alpha.7+ defaults tamedMobsOnly ON for copper..netherite
+        // (#111), which would refuse every untamed probe mob in this suite.
+        // One idempotent, suite-wide pin-off - never restored: a flip-flop
+        // across parallel tests would race, and run/ is ephemeral. The gate
+        // has its own test in pseudocore's suite; this harness only needs
+        // capture to work under any default.
+        org.bitwisemadness.pseudocore.config.PseudocoreConfig.COMMON
+                .tier("copper").ifPresent(s -> s.tamedMobsOnly.set(false));
+        org.bitwisemadness.pseudocore.config.PseudocoreConfig.COMMON
+                .tier("iron").ifPresent(s -> s.tamedMobsOnly.set(false));
         var server = helper.getLevel().getServer();
         var profile = new GameProfile(java.util.UUID.randomUUID(), "PseudocoreRetention");
         var player = new ServerPlayer(server, helper.getLevel(), profile,

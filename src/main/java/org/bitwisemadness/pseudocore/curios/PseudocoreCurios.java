@@ -28,14 +28,18 @@ public final class PseudocoreCurios {
     public static final String SLOT_ID = "pseudocore";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public PseudocoreCurios(IEventBus modBus) {
+    public PseudocoreCurios(IEventBus modBus, net.neoforged.fml.ModContainer container) {
         org.bitwisemadness.pseudocore.curios.linkage.ModAttachments.ATTACHMENT_TYPES.register(modBus);
         org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents.DATA_COMPONENTS.register(modBus);
+        org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig.register(container);
         modBus.addListener(org.bitwisemadness.pseudocore.curios.net.ModNetwork::register);
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
             // The reference below only resolves when this branch runs, so a
             // dedicated server never loads the client hotkey class.
             org.bitwisemadness.pseudocore.curios.client.ClientHotkey.register(modBus);
+            // Death-preserve's client half (#14): tint + tooltip - the same
+            // dist discipline for the same reason.
+            org.bitwisemadness.pseudocore.curios.client.DeathCoreClient.register(modBus);
         }
         LOGGER.info("Pseudocore Curios initialized");
     }
