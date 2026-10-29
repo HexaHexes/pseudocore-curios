@@ -28,8 +28,9 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (2 tests:
-smoke plus the Gear Evolution NBT-retention gate). `expectedTests = 2` in
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (5 tests:
+smoke, the Gear Evolution NBT-retention gate, linkage stamp/tag/record, the
+unload position refresh, and the linkage cap/forget). `expectedTests = 5` in
 `build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
 from the `gametestMods` configuration.

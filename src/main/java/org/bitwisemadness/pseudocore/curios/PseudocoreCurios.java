@@ -22,6 +22,8 @@ public final class PseudocoreCurios {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public PseudocoreCurios(IEventBus modBus) {
+        org.bitwisemadness.pseudocore.curios.linkage.ModAttachments.ATTACHMENT_TYPES.register(modBus);
+        org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents.DATA_COMPONENTS.register(modBus);
         LOGGER.info("Pseudocore Curios initialized");
     }
 }

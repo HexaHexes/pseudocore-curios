@@ -16,14 +16,25 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
+import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
+import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
+import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
+
+import java.util.UUID;
 
 /**
  * Smoke test plus the NBT-retention gate (#2): a core that evolves through
@@ -133,6 +144,112 @@ public final class PseudocoreCuriosGameTests {
         });
     }
 
+    @GameTest(template = "empty")
+    public static void releaseStampsCoreTagsMobAndRecords(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed for a release to track");
+        Vec3 pos = Vec3.atBottomCenterOf(cow.blockPosition()).add(0.0, 1.0, 0.0);
+        check(PseudocoreItem.releaseContained(stack, helper.getLevel(), pos, 0.0F, player),
+                "release must succeed");
+
+        UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
+        check(linkage != null, "the released core must carry the linkage stamp (#8)");
+        // Capture discarded the original entity; the tag and record belong to
+        // the copy releaseContained spawned at the release position.
+        var released = helper.getLevel().getEntitiesOfClass(Cow.class, new AABB(pos, pos).inflate(3));
+        check(!released.isEmpty(), "the released cow must exist in the world");
+        var spawned = released.get(0);
+        check(linkage.equals(LinkageManager.taggedLinkage(spawned)),
+                "the released mob's tag must carry the same linkage");
+        check(player.getUUID().equals(LinkageManager.taggedOwner(spawned)),
+                "the tag must record the releasing player");
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        check(record != null, "the attachment must record the release");
+        check(spawned.getUUID().toString().equals(record.mobUuid()),
+                "the record must name the released mob");
+        check(helper.getLevel().dimension().location().toString().equals(record.dimension()),
+                "the record must carry the dimension");
+        check(cow.getName().getString().equals(record.name()),
+                "the record must carry the display name");
+
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void unloadRefreshKeepsLastKnownPosition(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed for a release to track");
+        Vec3 pos = Vec3.atBottomCenterOf(cow.blockPosition()).add(0.0, 1.0, 0.0);
+        check(PseudocoreItem.releaseContained(stack, helper.getLevel(), pos, 0.0F, player),
+                "release must succeed");
+        UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
+
+        // Capture discarded the original; the tagged entity is the copy that
+        // releaseContained spawned. It wanders, then its chunk unloads:
+        // NeoForge fires the leave event with the live entity, and the handler
+        // records the final position - driven through the real event.
+        var released = helper.getLevel().getEntitiesOfClass(Cow.class, new AABB(pos, pos).inflate(3));
+        check(!released.isEmpty(), "the released cow must exist in the world");
+        var spawned = released.get(0);
+        spawned.teleportTo(spawned.getX() + 50.0, spawned.getY(), spawned.getZ() + 30.0);
+        NeoForge.EVENT_BUS.post(new EntityLeaveLevelEvent(spawned, helper.getLevel()));
+
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        check(record != null, "the record must survive the leave event");
+        check(Math.abs(record.x() - spawned.getX()) < 0.01 && Math.abs(record.z() - spawned.getZ()) < 0.01,
+                "the unload refresh must store the mob's final position, got " + record.x()
+                        + "/" + record.z() + " vs " + spawned.getX() + "/" + spawned.getZ());
+
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void linkageRecordsAreCappedAndForgettable(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed for a release to track");
+        Vec3 pos = Vec3.atBottomCenterOf(cow.blockPosition()).add(0.0, 1.0, 0.0);
+        check(PseudocoreItem.releaseContained(stack, helper.getLevel(), pos, 0.0F, player),
+                "release must succeed");
+        UUID first = stack.get(ModLinkageComponents.LINKAGE.get());
+
+        // Flood past the cap through the same API the release listener uses.
+        UUID last = null;
+        for (int i = 0; i < ModAttachments.MAX_LINKAGES + 40; i++) {
+            last = LinkageManager.remember(player, stack, cow);
+        }
+        check(ModAttachments.of(player).size() == ModAttachments.MAX_LINKAGES,
+                "the cap must bound the attachment (#18)");
+        check(LinkageManager.find(player, first) == null,
+                "the oldest records must be evicted first");
+        check(LinkageManager.find(player, last) != null,
+                "the newest record must survive the cap");
+
+        LinkageManager.forget(player, last);
+        check(LinkageManager.find(player, last) == null,
+                "forget must drop a consumed record (#18)");
+
+        helper.succeed();
+    }
+
     /**
      * A real, connected ServerPlayer: constructed raw, then joined through
      * {@code PlayerList.placeNewPlayer} - the real join flow, which
@@ -185,16 +302,25 @@ public final class PseudocoreCuriosGameTests {
         }
         // ManasCore's login sync is bus-caught (non-fatal) but still prints a
         // stack trace per payload; whitelisting keeps the test log readable.
-        curiosChannels.add(ResourceLocation.fromNamespaceAndPath(
-                "manascore_config", "sync_config_to_client"));
-        curiosChannels.add(ResourceLocation.fromNamespaceAndPath(
-                "manascore_storage", "sync_chunk_storage"));
+        // Full cross-product of its payload namespaces and sync fragments
+        // (scanned from the nested module jars): wrong pairs are never sent,
+        // right pairs are always covered - no whack-a-mole per run.
+        for (var ns : new String[]{"manascore_config", "manascore_storage",
+                "manascore_world_storage", "manascore_registry_storage"}) {
+            for (var frag : new String[]{"sync_config_to_client", "sync_chunk_storage",
+                    "sync_entity_storage", "sync_world_storage"}) {
+                curiosChannels.add(ResourceLocation.fromNamespaceAndPath(ns, frag));
+            }
+        }
+        curiosChannels.add(ResourceLocation.fromNamespaceAndPath("neoforge", "advanced_open_screen"));
 
         try {
             server.getPlayerList().placeNewPlayer(connection, player,
                     CommonListenerCookie.createInitial(profile, false));
             PseudocoreCurios.LOGGER.info("retention stage: placeNewPlayer returned");
         } catch (RuntimeException joinNoise) {
+            PseudocoreCurios.LOGGER.info(
+                    "retention stage: placeNewPlayer aborted ({}), fetching from the level", joinNoise.getMessage());
             // If placement completed before the failure, the player is usable.
             for (var placed : helper.getLevel().players()) {
                 if (placed.getUUID().equals(profile.getId())) {
