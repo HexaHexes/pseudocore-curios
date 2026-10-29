@@ -14,6 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.TamableAnimal;
@@ -567,6 +568,73 @@ public final class PseudocoreCuriosGameTests {
                     "the anti-theft gate must block the capture");
             check(helper.getLevel().getEntity(UUID.fromString(wolfRecord.mobUuid())) != null,
                     "the wolf must still be free in the world");
+
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Air right-click release and recall (#34): a core held <b>in hand</b> -
+     * deliberately not the slot's - works through the same event players
+     * fire, sharing the hotkey's cooldown. Pinned: the click is consumed,
+     * the press acts on the hand stack while the slot's (different, empty)
+     * core stays untouched, a second immediate click is throttled, and
+     * after the cooldown the emptied hand core recalls its own mob with the
+     * record forgotten. Dragon line excluded by scope (see #34: the class
+     * cannot be named on this classpath).
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void airClickReleasesAndRecallsFromTheHand(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack hand = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+        // A second, empty core in the Curios slot: the air press must never
+        // touch it - that independence is the whole report (#34).
+        equipInSlot(player, new ItemStack(copper));
+
+        var first = new net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
+                .RightClickItem(player, InteractionHand.MAIN_HAND);
+        NeoForge.EVENT_BUS.post(first);
+        check(first.isCanceled(), "the air press must consume the click (#34)");
+        check(hand.get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                "the hand core must be released by the air press");
+        UUID linkage = hand.get(ModLinkageComponents.LINKAGE.get());
+        check(linkage != null, "the air release must stamp the hand core");
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        check(record != null, "the air release must record the mob");
+        check(slotStack(player).get(ModLinkageComponents.LINKAGE.get()) == null
+                        && slotStack(player).get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                "the slot's own core must stay untouched (#34)");
+
+        // Same throttle as the hotkey: an immediate second click does nothing.
+        var immediate = new net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
+                .RightClickItem(player, InteractionHand.MAIN_HAND);
+        NeoForge.EVENT_BUS.post(immediate);
+        check(hand.get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                "the shared cooldown must block an immediate second press (#11/#34)");
+
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            var second = new net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
+                    .RightClickItem(player, InteractionHand.MAIN_HAND);
+            NeoForge.EVENT_BUS.post(second);
+            check(second.isCanceled(), "the recalling press must consume the click too");
+            ContainedMobComponent restored = hand.get(ModDataComponents.CONTAINED_MOB.get());
+            check(restored != null, "the emptied hand core must recall its mob (#34)");
+            check(restored.entityUuid().toString().equals(record.mobUuid()),
+                    "the hand core must recall THE mob it released");
+            check(helper.getLevel().getEntity(UUID.fromString(record.mobUuid())) == null,
+                    "the recalled mob must leave the world");
+            check(LinkageManager.find(player, linkage) == null,
+                    "the air recall must forget its record like the hotkey does");
+            check(slotStack(player).get(ModLinkageComponents.LINKAGE.get()) == null,
+                    "the slot's core must stay untouched through the recall too");
 
             helper.succeed();
         });

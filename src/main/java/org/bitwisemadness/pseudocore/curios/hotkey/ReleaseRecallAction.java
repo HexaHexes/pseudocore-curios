@@ -120,7 +120,8 @@ public final class ReleaseRecallAction {
     }
 
     /**
-     * Run one press for this player, on the server thread.
+     * Run one press for this player, on the server thread - resolving the
+     * core from the Curios slot (#11).
      *
      * @return the refusal to tell the player, or null when the press acted
      */
@@ -139,15 +140,28 @@ public final class ReleaseRecallAction {
         if (!isCore(stack.getItem())) {
             return Refusal.NOT_CORE;
         }
+        return press(player, stack);
+    }
 
+    /**
+     * One press against a <b>given</b> core stack: the shared body behind
+     * both entry points - the slot hotkey ({@link #handle}) and the air
+     * right-click (#34) - so cooldown, release and recall can never drift
+     * apart between them. Slot-shape refusals ({@code NO_SLOT} and friends)
+     * belong to the caller that resolved the stack; this method only
+     * validates what a stack can be wrong about.
+     *
+     * @return the refusal to tell the player, or null when the press acted
+     */
+    public static Refusal press(ServerPlayer player, ItemStack stack) {
         long now = player.level().getGameTime();
         Long last = LAST_USE.get(player.getUUID());
         if (last != null && now - last < COOLDOWN_TICKS) {
             return Refusal.COOLDOWN;
         }
         // Past every validation the press is remembered - including when the
-        // branch below refuses - so the key cannot be used to probe release
-        // gates faster than the cooldown allows.
+        // branch below refuses - so neither trigger can be used to probe
+        // release gates faster than the cooldown allows.
         LAST_USE.put(player.getUUID(), now);
 
         boolean beast = stack.get(ModDataComponents.CONTAINED_MOB.get()) != null;
