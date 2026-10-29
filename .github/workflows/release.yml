@@ -25,6 +25,11 @@ on:
 
 permissions:
   contents: write
+  # The jar build resolves pseudocore from the org's GitHub Packages maven,
+  # whose reads are authenticated with the workflow token - the explicit
+  # permissions block zeroes every scope it does not name, so without this
+  # the build 401s on the pseudocore dependency (addon #19).
+  packages: read
   # Dispatching the publishing workflows below needs actions: write - an
   # explicit permissions block zeroes every scope it does not name.
   actions: write
@@ -82,6 +87,12 @@ jobs:
       - name: Build the jar
         if: steps.resolve.outputs.skip == 'false'
         run: ./gradlew build --no-daemon --stacktrace
+        # Same credential pair ci.yml passes: build.gradle reads GITHUB_ACTOR /
+        # GITHUB_TOKEN for the GitHub Packages maven (pseudocore). Missing
+        # here, the build 401s on pseudocore-<version>.pom (addon #19).
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish the release
         if: steps.resolve.outputs.skip == 'false'
