@@ -19,11 +19,24 @@ import org.slf4j.Logger;
 public final class PseudocoreCurios {
 
     public static final String MOD_ID = "pseudocore_curios";
+    /**
+     * The Curios slot id this addon defines ({@code curios/slots/pseudocore.json}).
+     * A plain String constant on purpose: the client's hotkey precheck and the
+     * server's action handler both read it, and a constant inlines at both call
+     * sites without loading either side's classes into the other's runtime.
+     */
+    public static final String SLOT_ID = "pseudocore";
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public PseudocoreCurios(IEventBus modBus) {
         org.bitwisemadness.pseudocore.curios.linkage.ModAttachments.ATTACHMENT_TYPES.register(modBus);
         org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents.DATA_COMPONENTS.register(modBus);
+        modBus.addListener(org.bitwisemadness.pseudocore.curios.net.ModNetwork::register);
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            // The reference below only resolves when this branch runs, so a
+            // dedicated server never loads the client hotkey class.
+            org.bitwisemadness.pseudocore.curios.client.ClientHotkey.register(modBus);
+        }
         LOGGER.info("Pseudocore Curios initialized");
     }
 }

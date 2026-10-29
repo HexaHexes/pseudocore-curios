@@ -1,0 +1,9 @@
+{
+  "key.pseudocore_curios.release_recall": "Release / Recall Core",
+  "key.categories.pseudocore_curios": "Pseudocore",
+  "pseudocore_curios.message.no_slot": "You have no Pseudocore slot",
+  "pseudocore_curios.message.no_core": "Your Pseudocore slot holds no core",
+  "pseudocore_curios.message.not_core": "That is not a Pseudocore core",
+  "pseudocore_curios.message.cooldown": "Give the core a moment",
+  "pseudocore_curios.message.nothing_to_release": "Nothing to release"
+}
