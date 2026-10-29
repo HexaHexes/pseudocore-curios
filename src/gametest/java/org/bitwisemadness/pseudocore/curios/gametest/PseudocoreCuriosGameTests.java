@@ -18,7 +18,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Cow;
-import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -34,6 +33,7 @@ import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
 import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
+import org.bitwisemadness.pseudocore.curios.net.UnreachableRecallS2C;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
@@ -408,9 +408,11 @@ public final class PseudocoreCuriosGameTests {
                             + " vs " + record.mobUuid());
             check(LinkageManager.find(player, linkage) == null,
                     "a successful recall must forget its record (#18's consumer contract)");
-            check(helper.getLevel().getEntitiesOfClass(Cow.class,
-                            new AABB(player.position(), player.position()).inflate(4)).isEmpty(),
-                    "the recalled mob must leave the world - captured, not duplicated");
+            // By UUID, never by area scan: every mock player shares the world
+            // spawn, so nearby cows belong to sibling tests - only the tracked
+            // one proves this test's capture.
+            check(helper.getLevel().getEntity(UUID.fromString(record.mobUuid())) == null,
+                    "the tracked mob must be gone from the world - captured, not duplicated");
 
             helper.succeed();
         });
@@ -439,10 +441,17 @@ public final class PseudocoreCuriosGameTests {
         equipInSlot(player, stack);
 
         check(ReleaseRecallAction.handle(player) == null, "the first press must release (#11)");
-        var released = helper.getLevel().getEntitiesOfClass(Cow.class,
-                new AABB(player.position(), player.position()).inflate(4));
-        check(!released.isEmpty(), "the released cow must exist in the world");
-        released.get(0).discard();
+        UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
+        check(linkage != null, "release must stamp the core");
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        check(record != null, "release must record the mob");
+
+        // By UUID: the shared spawn area holds sibling tests' released cows,
+        // so an area query could discard the wrong one - the record names
+        // exactly this test's mob.
+        var tracked = helper.getLevel().getEntity(UUID.fromString(record.mobUuid()));
+        check(tracked != null, "the released cow must exist in the world");
+        tracked.discard();
 
         helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
             var refusal = ReleaseRecallAction.handle(player);
@@ -452,6 +461,23 @@ public final class PseudocoreCuriosGameTests {
                     "an unreachable recall must not capture anything");
             check(slotStack(player).get(ModLinkageComponents.LINKAGE.get()) != null,
                     "the core keeps its stamp - the record stays answerable");
+
+            // The waypoint half's server side (#13): the exact payload the
+            // branch hands to PacketDistributor - payloadFor is the one
+            // builder unreachable() calls, one line away - carrying the
+            // record's name, its position with the message's rounding, and
+            // the dimension id.
+            var waypoint = ReleaseRecallAction.payloadFor(record);
+            check(waypoint.name().equals(record.name()),
+                    "the waypoint must carry the mob's name, got " + waypoint.name());
+            check(waypoint.x() == Math.round(record.x())
+                            && waypoint.y() == Math.round(record.y())
+                            && waypoint.z() == Math.round(record.z()),
+                    "the waypoint must carry the record's position, got "
+                            + waypoint.x() + "/" + waypoint.y() + "/" + waypoint.z() + " vs "
+                            + record.x() + "/" + record.y() + "/" + record.z());
+            check(waypoint.dimension().equals(record.dimension()),
+                    "the waypoint must carry the dimension, got " + waypoint.dimension());
 
             helper.succeed();
         });
@@ -478,6 +504,10 @@ public final class PseudocoreCuriosGameTests {
         equipInSlot(player, coreA);
         check(ReleaseRecallAction.handle(player) == null,
                 "core A must release its own mob (#11)");
+        UUID linkageA = coreA.get(ModLinkageComponents.LINKAGE.get());
+        check(linkageA != null, "core A's release must stamp it");
+        LinkageRecord recordA = LinkageManager.find(player, linkageA);
+        check(recordA != null, "core A's release must record its mob");
 
         ItemStack coreB = new ItemStack(copper);
         check(coreB.get(ModLinkageComponents.LINKAGE.get()) == null,
@@ -489,8 +519,9 @@ public final class PseudocoreCuriosGameTests {
                     "a fresh core must refuse with NOT_LINKED, got " + refusal);
             check(slotStack(player).get(ModDataComponents.CONTAINED_MOB.get()) == null,
                     "the wrong core must capture nothing");
-            check(!helper.getLevel().getEntitiesOfClass(Cow.class,
-                            new AABB(player.position(), player.position()).inflate(8)).isEmpty(),
+            // By UUID: the shared spawn area is full of sibling tests' cows,
+            // so only this record's mob proves core A's cow is untouched.
+            check(helper.getLevel().getEntity(UUID.fromString(recordA.mobUuid())) != null,
                     "core A's cow must still be free in the world");
 
             helper.succeed();
@@ -517,12 +548,16 @@ public final class PseudocoreCuriosGameTests {
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, stack);
         check(ReleaseRecallAction.handle(player) == null, "the first press must release (#11)");
+        UUID wolfLinkage = stack.get(ModLinkageComponents.LINKAGE.get());
+        check(wolfLinkage != null, "release must stamp the core");
+        LinkageRecord wolfRecord = LinkageManager.find(player, wolfLinkage);
+        check(wolfRecord != null, "release must record the mob");
 
-        var released = helper.getLevel().getEntitiesOfClass(Wolf.class,
-                new AABB(player.position(), player.position()).inflate(4));
-        check(!released.isEmpty(), "the released wolf must exist in the world");
-        check(released.get(0) instanceof TamableAnimal, "a wolf is tamable");
-        ((TamableAnimal) released.get(0)).setOwnerUUID(UUID.randomUUID());
+        // By UUID: the shared spawn area holds sibling tests' released mobs.
+        var trackedWolf = helper.getLevel().getEntity(UUID.fromString(wolfRecord.mobUuid()));
+        check(trackedWolf != null, "the released wolf must exist in the world");
+        check(trackedWolf instanceof TamableAnimal, "a wolf is tamable");
+        ((TamableAnimal) trackedWolf).setOwnerUUID(UUID.randomUUID());
 
         helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
             var refusal = ReleaseRecallAction.handle(player);
@@ -530,8 +565,7 @@ public final class PseudocoreCuriosGameTests {
                     "another player's owned mob must refuse with GATED (#12), got " + refusal);
             check(slotStack(player).get(ModDataComponents.CONTAINED_MOB.get()) == null,
                     "the anti-theft gate must block the capture");
-            check(helper.getLevel().getEntitiesOfClass(Wolf.class,
-                            new AABB(player.position(), player.position()).inflate(8)).size() == 1,
+            check(helper.getLevel().getEntity(UUID.fromString(wolfRecord.mobUuid())) != null,
                     "the wolf must still be free in the world");
 
             helper.succeed();
@@ -616,6 +650,10 @@ public final class PseudocoreCuriosGameTests {
             }
         }
         curiosChannels.add(ResourceLocation.fromNamespaceAndPath("neoforge", "advanced_open_screen"));
+        // Our own clientbound payload (#13): the mock connection accepts only
+        // listed ad-hoc channels, and unreachable() sends this one.
+        curiosChannels.add(ResourceLocation.fromNamespaceAndPath(
+                PseudocoreCurios.MOD_ID, "unreachable_recall"));
 
         try {
             server.getPlayerList().placeNewPlayer(connection, player,

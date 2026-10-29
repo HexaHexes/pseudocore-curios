@@ -138,6 +138,11 @@ dependencies {
     compileOnly "curse.maven:tensura-reincarnated-643695:${tensura_file_id}"
     compileOnly "curse.maven:architectury-419699:${architectury_file_id}"
 
+    // Xaero's Minimap - the optional waypoint target of the unreachable-recall
+    // payload (#13). Client-only like the mod itself: only ClientWaypoint
+    // imports it, and that class never loads on a server.
+    compileOnly "curse.maven:xaeros-minimap-263420:${xaero_minimap_file_id}"
+
     // For the run-only mods folder: Pseudocore from GitHub Packages, Curios
     // from CurseMaven - the smoke test needs both present so the mod's own
     // required dependencies resolve at FML load. The Tensura/Gear Evolution

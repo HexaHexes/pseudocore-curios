@@ -18,6 +18,7 @@ import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
+import org.bitwisemadness.pseudocore.curios.net.UnreachableRecallS2C;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import org.bitwisemadness.pseudocore.util.IafHornAccess;
@@ -222,6 +223,9 @@ public final class ReleaseRecallAction {
 
     /** The last-known-position actionbar line, naming the mob and dimension (#12). */
     private static Refusal unreachable(ServerPlayer player, LinkageRecord record) {
+        // The waypoint half (#13): same record, same numbers as the message
+        // below - payloadFor is the one builder, so they cannot disagree.
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, payloadFor(record));
         Component dimension;
         try {
             ResourceLocation id = ResourceLocation.parse(record.dimension());
@@ -232,6 +236,18 @@ public final class ReleaseRecallAction {
         }
         return refuse(player, Refusal.UNREACHABLE, record.name(),
                 Math.round(record.x()), Math.round(record.y()), Math.round(record.z()), dimension);
+    }
+
+    /**
+     * The waypoint payload the unreachable branch sends (#13): the record's
+     * name, position rounded exactly as the message rounds it, and the
+     * dimension id. Public so the gametest asserts the very builder the
+     * branch hands to {@code PacketDistributor} - one line away.
+     */
+    public static UnreachableRecallS2C payloadFor(LinkageRecord record) {
+        return new UnreachableRecallS2C(record.name(),
+                (int) Math.round(record.x()), (int) Math.round(record.y()), (int) Math.round(record.z()),
+                record.dimension());
     }
 
     /** Tell the player, red on the actionbar, exactly as the base gates do. */
