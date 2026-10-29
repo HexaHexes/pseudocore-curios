@@ -1,13 +1,12 @@
 package org.bitwisemadness.pseudocore.curios.linkage;
 
+import java.util.Iterator;
+import java.util.UUID;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
-
-import java.util.Iterator;
-import java.util.UUID;
 
 /**
  * The linkage API (#8): three sides of one identity - a stamp on the core, a
