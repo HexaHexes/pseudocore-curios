@@ -34,42 +34,60 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * a ladder silently in game, which no test server run can see (Gear
  * Evolution's listener only runs where GE is installed).</p>
  *
- * <p>The EP caps are pinned to Pseudocore's {@code PseudocoreConfig} tables
- * (copper 1,500 through adamantite 1,500,000; dragon copper 150,000 through
- * gold 825,000) so a config rebalance that forgets the chain fails here. The
- * two uncapped terminal tiers (config cap 0) carry a {@link #UNCAPPED_SENTINEL}
- * instead - GE needs a number even for a tier that must never cap out.</p>
+ * <p>The EP caps are pinned to the settled #33 curve, which follows the
+ * pack's <b>armor chains</b>: the vanilla rungs from the live
+ * {@code Tensura - Vanilla Extensions} datapack (leather 5,500 through
+ * netherite 175,000), the Tensura rungs from Tensura: Reincarnated's own
+ * jar (identical to the {@code Default Extensions} datapack), dragon tiers
+ * on the jar's main spine starting at the low_magisteel rung, and the two
+ * Option-A tie-breaks (mithril 400,000, adamantite 1,250,000). They
+ * deliberately no longer mirror {@code PseudocoreConfig}'s capture-limit
+ * defaults: what a tier may catch and how hard it evolves are different
+ * questions. {@code epGain} is copied verbatim from the armor ladders and
+ * may be <b>omitted</b> - GE's loader reads an absent value as 0.0, which
+ * is exactly how the live armor files ship. The two uncapped terminal
+ * tiers carry {@link #UNCAPPED_SENTINEL} - GE needs a number even for a
+ * tier that must never cap out.</p>
  */
 class GearEvolutionChainTest {
 
     /** The terminal tiers' maxEP: uncapped in config, a ceiling GE can hold. */
     private static final long UNCAPPED_SENTINEL = 100_000_000L;
 
+    /**
+     * The one sanctioned continuity exception (#33): netherite caps at
+     * 175,000 but low_magisteel's whole band is 6,000-18,000 - the armor
+     * chain itself descends across that boundary (netherite armor evolves
+     * into an 18k-capped item), so this rung starts at the Tensura jar's
+     * own floor instead of the previous maxEP.
+     */
+    private static final long DESCENT_FLOOR = 6_000L;
+
     private static final Path CHAINS =
             Path.of("src/main/resources/data/pseudocore_curios/addon_chains");
 
-    /** PseudocoreConfig.TIERS order: key plus default EP cap. */
+    /** The settled armor-aligned curve (#33): item plus maxEP. */
     private static final String[][] BEAST = {
-            {"copper_pseudocore", "1500"},
-            {"iron_pseudocore", "7500"},
-            {"silver_pseudocore", "15000"},
-            {"gold_pseudocore", "37500"},
-            {"netherite_pseudocore", "112500"},
-            {"low_magisteel_pseudocore", "150000"},
-            {"high_magisteel_pseudocore", "225000"},
-            {"pure_magisteel_pseudocore", "300000"},
-            {"mithril_pseudocore", "450000"},
+            {"copper_pseudocore", "5500"},
+            {"iron_pseudocore", "13500"},
+            {"silver_pseudocore", "32000"},
+            {"gold_pseudocore", "78000"},
+            {"netherite_pseudocore", "175000"},
+            {"low_magisteel_pseudocore", "18000"},
+            {"high_magisteel_pseudocore", "52000"},
+            {"pure_magisteel_pseudocore", "225000"},
+            {"mithril_pseudocore", "400000"},
             {"orichalcum_pseudocore", "750000"},
-            {"adamantite_pseudocore", "1500000"},
+            {"adamantite_pseudocore", "1250000"},
             {"hihiirokane_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
     };
 
-    /** PseudocoreConfig.DRAGON_TIERS order: key plus default EP cap. */
+    /** Dragon tiers on the Tensura jar's main spine (#33): item plus maxEP. */
     private static final String[][] DRAGON = {
-            {"copper_dragon_pseudocore", "150000"},
-            {"iron_dragon_pseudocore", "300000"},
-            {"silver_dragon_pseudocore", "525000"},
-            {"gold_dragon_pseudocore", "825000"},
+            {"copper_dragon_pseudocore", "18000"},
+            {"iron_dragon_pseudocore", "52000"},
+            {"silver_dragon_pseudocore", "225000"},
+            {"gold_dragon_pseudocore", "750000"},
             {"netherite_dragon_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
     };
 
@@ -112,8 +130,11 @@ class GearEvolutionChainTest {
 
     /**
      * The relational guarantees: starts at 0, every minEP meets the previous
-     * maxEP, every evolution target is the next tier (absent only on the last),
-     * EP caps equal the config table, and ranges strictly ascend.
+     * maxEP - except the one armor-boundary descent this curve inherits
+     * (#33, {@link #DESCENT_FLOOR}) - every evolution target is the next
+     * tier (absent only on the last), every maxEP is the settled curve's
+     * number, epGain is numeric when present (absent = GE's 0.0, how the
+     * live armor files ship), and ranges strictly ascend.
      */
     private static void assertLadderContinuous(String[][] ladder) throws IOException {
         long previousMax = 0;
@@ -123,14 +144,22 @@ class GearEvolutionChainTest {
 
             assertEquals(expectedItem, chain.item(),
                     "file " + ladder[i][0] + " must declare its own item id");
-            assertEquals(i == 0 ? 0 : previousMax, chain.min(),
-                    expectedItem + ": minEP must meet the previous tier's maxEP");
+            long expectedMin = i == 0 ? 0
+                    : ladder[i][0].equals("low_magisteel_pseudocore") ? DESCENT_FLOOR
+                    : previousMax;
+            assertEquals(expectedMin, chain.min(),
+                    expectedItem + ": minEP must meet the previous tier's maxEP"
+                            + (expectedMin == DESCENT_FLOOR
+                            ? " - except at the armor boundary, where it takes the jar's floor (#33)"
+                            : ""));
             assertEquals(Long.parseLong(ladder[i][1]), chain.max(),
-                    expectedItem + ": maxEP must match PseudocoreConfig's default EP cap");
+                    expectedItem + ": maxEP must match the settled armor-aligned curve (#33)");
             assertTrue(chain.min() < chain.max(),
                     expectedItem + ": the EP range must ascend");
-            assertTrue(Pattern.compile("[0-9.]+").matcher(chain.gain()).matches(),
-                    expectedItem + ": epGain must be numeric, got " + chain.gain());
+            if (chain.gain() != null) {
+                assertTrue(Pattern.compile("[0-9.]+").matcher(chain.gain()).matches(),
+                        expectedItem + ": epGain must be numeric, got " + chain.gain());
+            }
 
             if (i < ladder.length - 1) {
                 assertEquals("pseudocore:" + ladder[i + 1][0], chain.evolution(),
@@ -149,9 +178,10 @@ class GearEvolutionChainTest {
         String item = find(ITEM, json, tier, "item");
         String min = find(MIN, json, tier, "minEP");
         String max = find(MAX, json, tier, "maxEP");
-        String gain = find(GAIN, json, tier, "epGain");
+        Matcher gain = GAIN.matcher(json);
         Matcher evo = EVO.matcher(json);
-        return new Chain(item, Long.parseLong(min), Long.parseLong(max), gain,
+        return new Chain(item, Long.parseLong(min), Long.parseLong(max),
+                gain.find() ? gain.group(1) : null,
                 evo.find() ? evo.group(1) : null);
     }
 
