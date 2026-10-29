@@ -28,8 +28,9 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (1 test).
-`expectedTests = 1` in `build.gradle` must match the `@GameTest` count.
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (2 tests:
+smoke plus the Gear Evolution NBT-retention gate). `expectedTests = 2` in
+`build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
 from the `gametestMods` configuration.
 
@@ -37,6 +38,13 @@ from the `gametestMods` configuration.
 - `mod_id` contains underscores while the Java package is
   `org.bitwisemadness.pseudocore.curios` - do not "fix" one to match the other;
   the checklist in the template README treats them as separate fields.
+- Run game-test gates **serially**. Two concurrent `runGameTestServer` runs
+  share `run/` (logs, configs, mods staging) and collide on file locks; a
+  wedged server from one run silently blocks the other. Long-running async
+  tests also need `timeoutTicks` on their `@GameTest` - a test awaiting a
+  delayed callback never times out on its own and holds the batch open
+  forever (CI's `timeout-minutes` is the outer belt, the annotation is the
+  inner one).
 - The mixin config is registered but empty; any mixin added here must also set
   the `package` field in `pseudocore_curios.mixins.json`.
 - Capture/recall deliberately reuse Pseudocore's `tryCapture` /
