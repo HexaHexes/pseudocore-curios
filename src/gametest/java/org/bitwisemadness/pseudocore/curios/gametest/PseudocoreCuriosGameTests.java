@@ -16,7 +16,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -368,6 +370,187 @@ public final class PseudocoreCuriosGameTests {
                 "an immediate second press must hit the cooldown (#11)");
 
         helper.succeed();
+    }
+
+    /**
+     * The happy recall (#12): release fills the record, the second press -
+     * past the cooldown - resolves the core's own linkage to that record and
+     * re-captures THE tracked mob through the gates: component restored with
+     * the same mob UUID, the entity leaves the world (captured, not
+     * duplicated), and the record is forgotten (#18's consumer contract).
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void recallCapturesTheTrackedMob(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, stack);
+
+        check(ReleaseRecallAction.handle(player) == null, "the first press must release (#11)");
+        UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
+        check(linkage != null, "release must stamp the core");
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        check(record != null, "release must record the mob");
+
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            check(ReleaseRecallAction.handle(player) == null,
+                    "the second press must recall the tracked mob (#12)");
+            ContainedMobComponent restored = slotStack(player).get(ModDataComponents.CONTAINED_MOB.get());
+            check(restored != null, "recall must restore the contained_mob component (#12)");
+            check(restored.entityUuid().toString().equals(record.mobUuid()),
+                    "recall must restore THE tracked mob, got " + restored.entityUuid()
+                            + " vs " + record.mobUuid());
+            check(LinkageManager.find(player, linkage) == null,
+                    "a successful recall must forget its record (#18's consumer contract)");
+            check(helper.getLevel().getEntitiesOfClass(Cow.class,
+                            new AABB(player.position(), player.position()).inflate(4)).isEmpty(),
+                    "the recalled mob must leave the world - captured, not duplicated");
+
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Unloaded or absent mob, loaded chunks only (#12): after the release,
+     * the mob is discarded (the leave event re-records its final spot) and
+     * the next press reports {@code UNREACHABLE} - asserted as the
+     * handler's result, never the chat text - with nothing captured. The
+     * dimension-lookup half (cross-dimension only when the level exists)
+     * shares this branch; a dimension cannot be unregistered from a test,
+     * so that half stays code-covered by the same guard.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void recallReportsTheUnreachableMob(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, stack);
+
+        check(ReleaseRecallAction.handle(player) == null, "the first press must release (#11)");
+        var released = helper.getLevel().getEntitiesOfClass(Cow.class,
+                new AABB(player.position(), player.position()).inflate(4));
+        check(!released.isEmpty(), "the released cow must exist in the world");
+        released.get(0).discard();
+
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            var refusal = ReleaseRecallAction.handle(player);
+            check(refusal == ReleaseRecallAction.Refusal.UNREACHABLE,
+                    "an absent mob must report UNREACHABLE (#12), got " + refusal);
+            check(slotStack(player).get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                    "an unreachable recall must not capture anything");
+            check(slotStack(player).get(ModLinkageComponents.LINKAGE.get()) != null,
+                    "the core keeps its stamp - the record stays answerable");
+
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Linkage scoping, the wrong-core half (#12): core A released the cow,
+     * so core A would recall it - but a fresh core B carries no stamp and
+     * must answer NOT_LINKED with the cow still free. The record lookup is
+     * keyed by the core's own linkage, never "whatever this player released
+     * last", so another core cannot pull another core's mob.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void wrongCoreNeverRecallsAnotherMobsMob(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack coreA = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, coreA) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, coreA);
+        check(ReleaseRecallAction.handle(player) == null,
+                "core A must release its own mob (#11)");
+
+        ItemStack coreB = new ItemStack(copper);
+        check(coreB.get(ModLinkageComponents.LINKAGE.get()) == null,
+                "a fresh core carries no stamp");
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            equipInSlot(player, coreB);
+            var refusal = ReleaseRecallAction.handle(player);
+            check(refusal == ReleaseRecallAction.Refusal.NOT_LINKED,
+                    "a fresh core must refuse with NOT_LINKED, got " + refusal);
+            check(slotStack(player).get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                    "the wrong core must capture nothing");
+            check(!helper.getLevel().getEntitiesOfClass(Cow.class,
+                            new AABB(player.position(), player.position()).inflate(8)).isEmpty(),
+                    "core A's cow must still be free in the world");
+
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Anti-theft re-applies on recall (#12): the tracked wolf's owner is
+     * switched to another player between release and recall, and the capture
+     * gate refuses - {@code GATED}, the gate's own message, nothing stored,
+     * the wolf still free. The gates decide, not this mod: the recall path
+     * only hands the mob to the same {@code tryCapture} the click uses.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void recallReappliesTheAntiTheftGate(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var wolf = helper.spawn(EntityType.WOLF, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, wolf, stack) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, stack);
+        check(ReleaseRecallAction.handle(player) == null, "the first press must release (#11)");
+
+        var released = helper.getLevel().getEntitiesOfClass(Wolf.class,
+                new AABB(player.position(), player.position()).inflate(4));
+        check(!released.isEmpty(), "the released wolf must exist in the world");
+        check(released.get(0) instanceof TamableAnimal, "a wolf is tamable");
+        ((TamableAnimal) released.get(0)).setOwnerUUID(UUID.randomUUID());
+
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            var refusal = ReleaseRecallAction.handle(player);
+            check(refusal == ReleaseRecallAction.Refusal.GATED,
+                    "another player's owned mob must refuse with GATED (#12), got " + refusal);
+            check(slotStack(player).get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                    "the anti-theft gate must block the capture");
+            check(helper.getLevel().getEntitiesOfClass(Wolf.class,
+                            new AABB(player.position(), player.position()).inflate(8)).size() == 1,
+                    "the wolf must still be free in the world");
+
+            helper.succeed();
+        });
+    }
+
+    /** Drop a stack into the Curios slot through the raw handler write. */
+    private static void equipInSlot(ServerPlayer player, ItemStack stack) {
+        var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
+        check(inventory != null, "the joined player must have a Curios inventory (#7)");
+        inventory.getCurios().get(PseudocoreCurios.SLOT_ID)
+                .getStacks().setStackInSlot(0, stack);
+    }
+
+    /** The stack currently in the Curios slot. */
+    private static ItemStack slotStack(ServerPlayer player) {
+        return CuriosApi.getCuriosInventory(player).orElseThrow()
+                .getCurios().get(PseudocoreCurios.SLOT_ID)
+                .getStacks().getStackInSlot(0);
     }
 
     /**
