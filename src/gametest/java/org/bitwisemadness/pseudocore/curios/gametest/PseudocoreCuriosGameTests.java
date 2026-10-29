@@ -3,8 +3,9 @@ package org.bitwisemadness.pseudocore.curios.gametest;
 import com.mojang.authlib.GameProfile;
 import dev.gearevo.gearevolution.reconcile.PlayerGearReconciler;
 import dev.gearevo.gearevolution.reconcile.ReconciliationMode;
-import net.minecraft.core.registries.BuiltInRegistries;
+import java.util.UUID;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -17,9 +18,9 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Cow;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
@@ -40,8 +41,6 @@ import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
-
-import java.util.UUID;
 
 /**
  * Smoke test plus the NBT-retention gate (#2): a core that evolves through
