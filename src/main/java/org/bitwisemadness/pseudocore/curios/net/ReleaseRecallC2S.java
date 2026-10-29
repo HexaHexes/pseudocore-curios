@@ -38,17 +38,14 @@ public record ReleaseRecallC2S() implements CustomPacketPayload {
      *
      * <p>{@code enqueueWork} is what makes the world access legal: the network
      * thread never touches a level, a player inventory, or the game time the
-     * cooldown reads. Refusals are told back as an actionbar message in the
-     * same style pseudocore's capture gates use.</p>
+     * cooldown reads. Refusals message the player themselves from where the
+     * data lives (the #12 refactor: the unreachable line needs the record's
+     * coordinates) - this handler only runs the press.</p>
      */
     public static void handle(ReleaseRecallC2S payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                ReleaseRecallAction.Refusal refusal = ReleaseRecallAction.handle(player);
-                if (refusal != null) {
-                    player.displayClientMessage(refusal.component().copy()
-                            .withStyle(net.minecraft.ChatFormatting.RED), true);
-                }
+                ReleaseRecallAction.handle(player);
             }
         });
     }

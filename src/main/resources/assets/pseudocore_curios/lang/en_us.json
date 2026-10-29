@@ -5,5 +5,6 @@
   "pseudocore_curios.message.no_core": "Your Pseudocore slot holds no core",
   "pseudocore_curios.message.not_core": "That is not a Pseudocore core",
   "pseudocore_curios.message.cooldown": "Give the core a moment",
-  "pseudocore_curios.message.nothing_to_release": "Nothing to release"
+  "pseudocore_curios.message.not_linked": "This core has not released anything it can recall",
+  "pseudocore_curios.message.unreachable": "%s was last seen at %s / %s / %s in %s"
 }

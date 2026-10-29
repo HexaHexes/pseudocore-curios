@@ -1,13 +1,23 @@
 package org.bitwisemadness.pseudocore.curios.hotkey;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
+import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
+import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import org.bitwisemadness.pseudocore.util.IafHornAccess;
@@ -29,6 +39,16 @@ import java.util.UUID;
  * for the beast line, {@link IafHornAccess#releaseDragonAt} for the dragon
  * line), which apply every gate they always did and post the
  * {@code PseudocoreReleaseEvent} our linkage listener already stamps (#8).</p>
+ *
+ * <p>An empty press runs the recall flow (#12): linkage-scoped (the core's own
+ * stamp resolves the record), loaded chunks only - a chunk-unloaded or gone
+ * mob answers with the mob's last-known position and dimension, never a
+ * force-load - and capture through the real gate paths ({@link
+ * PseudocoreItem#tryCapture} / {@link IafHornAccess#tryCaptureDragon}), so
+ * anti-theft and every other gate re-apply unchanged. A successful recall
+ * forgets its record ({@link LinkageManager#forget}, #18's consumer
+ * contract); a gate-refused one reports {@link Refusal#GATED}, because the
+ * gates decide and this mod does not paraphrase them.</p>
  *
  * <p>Two guards, both load-bearing for an environment without Ice and Fire
  * (the CI gametest classpath is exactly that):</p>
@@ -71,7 +91,15 @@ public final class ReleaseRecallAction {
         NO_CORE("pseudocore_curios.message.no_core"),
         NOT_CORE("pseudocore_curios.message.not_core"),
         COOLDOWN("pseudocore_curios.message.cooldown"),
-        NOTHING_TO_RELEASE("pseudocore_curios.message.nothing_to_release");
+        NOT_LINKED("pseudocore_curios.message.not_linked"),
+        UNREACHABLE("pseudocore_curios.message.unreachable"),
+        /**
+         * A gate already spoke for itself - a capture/release gate's own
+         * actionbar line, or IaF's click-path silence on an ownership
+         * decline. Never messaged here by design: the gates decide, and
+         * this mod does not paraphrase them (#11, #12).
+         */
+        GATED(null);
 
         private final String key;
 
@@ -79,9 +107,14 @@ public final class ReleaseRecallAction {
             this.key = key;
         }
 
-        /** The actionbar text for this refusal, in pseudocore's message style. */
-        public Component component() {
-            return Component.translatable(this.key);
+        /**
+         * The actionbar text for this refusal, in pseudocore's message style.
+         * Takes the same arguments the translation key declares (the
+         * unreachable message names the mob, the coordinates and the
+         * dimension).
+         */
+        public Component component(Object... args) {
+            return Component.translatable(this.key, args);
         }
     }
 
@@ -119,20 +152,93 @@ public final class ReleaseRecallAction {
         boolean beast = stack.get(ModDataComponents.CONTAINED_MOB.get()) != null;
         boolean dragon = ModList.get().isLoaded("iceandfire")
                 && IafHornAccess.storedDragonType(stack) != null;
-        if (!beast && !dragon) {
-            // Interim seam: #12 turns an empty press into the recall flow.
-            return Refusal.NOTHING_TO_RELEASE;
+        if (beast || dragon) {
+            ServerLevel level = (ServerLevel) player.level();
+            // Release position per spec: the player's feet, their yaw.
+            var pos = player.position();
+            boolean released = beast
+                    ? PseudocoreItem.releaseContained(stack, level, pos, player.getYRot(), player)
+                    : IafHornAccess.releaseDragonAt(stack, level, pos, player.getYRot(), player);
+            // A refused release has already said its piece through the base
+            // API's own gates; the press consumed the cooldown above either way.
+            return released ? null : Refusal.GATED;
+        }
+        // Empty core: the recall flow (#12). Death-preserved state (#14) will
+        // report here instead, once that component exists.
+        return recall(player, stack);
+    }
+
+    /**
+     * The linkage-scoped recall (#12): resolve the core's stamp to its
+     * record, then capture the tracked mob through the real gate paths -
+     * loaded chunks only, never a force-load.
+     *
+     * <p>Cross-dimension only when the stored dimension exists as a level at
+     * all; otherwise the unreachable message names the dimension. The
+     * message and the level lookup parse the record's dimension id
+     * independently, so a malformed record degrades to the unreachable path
+     * rather than crashing the press (#13 will hang its waypoint off that
+     * same branch).</p>
+     */
+    private static Refusal recall(ServerPlayer player, ItemStack stack) {
+        UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
+        if (linkage == null) {
+            return refuse(player, Refusal.NOT_LINKED);
+        }
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        if (record == null) {
+            // Never recorded here, or evicted past the #18 cap: the same
+            // player-facing answer - this core recalls nothing.
+            return refuse(player, Refusal.NOT_LINKED);
         }
 
-        ServerLevel level = (ServerLevel) player.level();
-        // Release position per spec: the player's feet, their yaw.
-        var pos = player.position();
-        if (beast) {
-            PseudocoreItem.releaseContained(stack, level, pos, player.getYRot(), player);
-        } else {
-            IafHornAccess.releaseDragonAt(stack, level, pos, player.getYRot(), player);
+        ServerLevel level;
+        try {
+            level = player.getServer().getLevel(ResourceKey.create(Registries.DIMENSION,
+                    ResourceLocation.parse(record.dimension())));
+        } catch (RuntimeException badDimension) {
+            level = null;
         }
-        return null;
+        if (level == null) {
+            return unreachable(player, record);
+        }
+
+        Entity entity = level.getEntity(UUID.fromString(record.mobUuid()));
+        if (!(entity instanceof LivingEntity living)) {
+            // Unloaded chunk or a mob that is simply gone: the last-known
+            // position message, never a chunk load (#12, locked).
+            return unreachable(player, record);
+        }
+
+        InteractionResult result = stack.getItem() instanceof PseudocoreItem
+                ? PseudocoreItem.tryCapture(player, living, stack)
+                : IafHornAccess.tryCaptureDragon(player, living, stack);
+        if (result == InteractionResult.SUCCESS) {
+            LinkageManager.forget(player, linkage);
+            return null;
+        }
+        return Refusal.GATED;
+    }
+
+    /** The last-known-position actionbar line, naming the mob and dimension (#12). */
+    private static Refusal unreachable(ServerPlayer player, LinkageRecord record) {
+        Component dimension;
+        try {
+            ResourceLocation id = ResourceLocation.parse(record.dimension());
+            dimension = Component.translatable("dimension." + id.getNamespace() + "." + id.getPath());
+        } catch (RuntimeException badDimension) {
+            // A record that never should exist still gets its message out.
+            dimension = Component.literal(record.dimension());
+        }
+        return refuse(player, Refusal.UNREACHABLE, record.name(),
+                Math.round(record.x()), Math.round(record.y()), Math.round(record.z()), dimension);
+    }
+
+    /** Tell the player, red on the actionbar, exactly as the base gates do. */
+    private static Refusal refuse(ServerPlayer player, Refusal refusal, Object... args) {
+        player.displayClientMessage(
+                refusal.component(args).copy().withStyle(ChatFormatting.RED), true);
+        return refusal;
     }
 
     /**
