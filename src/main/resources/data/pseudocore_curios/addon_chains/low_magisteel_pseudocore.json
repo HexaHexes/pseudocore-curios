@@ -1,7 +1,7 @@
 {
   "item": "pseudocore:low_magisteel_pseudocore",
-  "minEP": 112500,
-  "maxEP": 150000,
-  "epGain": 0.003,
+  "minEP": 6000,
+  "maxEP": 18000,
+  "epGain": 0.01,
   "evolution": "pseudocore:high_magisteel_pseudocore"
 }

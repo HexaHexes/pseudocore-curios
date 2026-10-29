@@ -1,7 +1,7 @@
 {
   "item": "pseudocore:copper_dragon_pseudocore",
   "minEP": 0,
-  "maxEP": 150000,
-  "epGain": 0.003,
+  "maxEP": 18000,
+  "epGain": 0.01,
   "evolution": "pseudocore:iron_dragon_pseudocore"
 }

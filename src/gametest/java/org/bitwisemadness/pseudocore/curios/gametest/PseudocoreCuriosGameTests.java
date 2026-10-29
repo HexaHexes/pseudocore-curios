@@ -91,10 +91,10 @@ public final class PseudocoreCuriosGameTests {
         check(before != null, "capture must store the contained_mob component");
         PseudocoreCurios.LOGGER.info("retention stage: captured");
 
-        // Put Gear Evolution at the copper tier's cap - 1,500, the maxEP this
-        // mod's own addon_chains declares - and reconcile once, as live play
-        // has by the time gear fills: reconcile wires the chain's caps and
-        // marks the stack tracked.
+        // Put Gear Evolution at the copper tier's cap - 5,500, the maxEP this
+        // mod's own addon_chains declares (#33's armor-aligned curve) - and
+        // reconcile once, as live play has by the time gear fills: reconcile
+        // wires the chain's caps and marks the stack tracked.
         DataComponentType<Double> maxEp = (DataComponentType<Double>) BuiltInRegistries.DATA_COMPONENT_TYPE
                 .getOptional(ResourceLocation.fromNamespaceAndPath("tensura", "max_existence_point"))
                 .orElse(null);
@@ -103,8 +103,8 @@ public final class PseudocoreCuriosGameTests {
                 .orElse(null);
         check(maxEp != null && ep != null,
                 "Tensura's existence_point / max_existence_point components must be registered");
-        stack.set(maxEp, 1500.0);
-        stack.set(ep, 1500.0);
+        stack.set(maxEp, 5500.0);
+        stack.set(ep, 5500.0);
         // The core rides the main hand from the start: the pack's trigger is a
         // kill with the gear HELD, and kill-EP attribution reads the held item.
         player.setItemSlot(EquipmentSlot.MAINHAND, stack);
