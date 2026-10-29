@@ -2,6 +2,8 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'net.neoforged.moddev' version '2.0.148'
+    id 'com.github.spotbugs' version '6.5.12'
+    id 'com.diffplug.spotless' version '8.10.3'
 }
 
 version = mod_version
@@ -129,12 +131,30 @@ dependencies {
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
     // The slot this mod adds. Never bundled.
     compileOnly "curse.maven:curios-309927:${curios_file_id}"
+    // Gear Evolution and Tensura, for the retention suite that drives GE's
+    // own reconciliation over a filled core (#2). Tensura is all rights
+    // reserved: compile only, never bundled.
+    compileOnly "curse.maven:gearevolution-1501711:${gearevolution_file_id}"
+    compileOnly "curse.maven:tensura-reincarnated-643695:${tensura_file_id}"
+    compileOnly "curse.maven:architectury-419699:${architectury_file_id}"
 
     // For the run-only mods folder: Pseudocore from GitHub Packages, Curios
     // from CurseMaven - the smoke test needs both present so the mod's own
-    // required dependencies resolve at FML load.
+    // required dependencies resolve at FML load. The Tensura/Gear Evolution
+    // closure mirrors tensura-tool-belt's, so the retention suite runs against
+    // the pack's real evolution stack.
     gametestMods "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
     gametestMods "curse.maven:curios-309927:${curios_file_id}"
+    gametestMods "curse.maven:gearevolution-1501711:${gearevolution_file_id}"
+    gametestMods "curse.maven:architectury-419699:${architectury_file_id}"
+    gametestMods "curse.maven:cloth-config-348521:${cloth_config_file_id}"
+    gametestMods "curse.maven:geckolib-388172:${geckolib_file_id}"
+    // The core jar nests every manascore-* module under META-INF/jars; FML's
+    // nested-jar loader installs them at runtime, so only the core is staged.
+    gametestMods "curse.maven:manascore-619025:${manascore_file_id}"
+    gametestMods "curse.maven:smartbrainlib-661293:${smartbrainlib_file_id}"
+    gametestMods "curse.maven:tensura-reincarnated-643695:${tensura_file_id}"
+    gametestMods "curse.maven:terrablender-940057:${terrablender_file_id}"
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -166,7 +186,7 @@ tasks.register('prepareGametestMods', Sync) {
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
     dependsOn 'prepareGametestMods'
 
-    def expectedTests = 1
+    def expectedTests = 8
     doLast {
         def log = file('run/logs/latest.log')
         if (!log.exists()) {
@@ -228,5 +248,41 @@ publishing {
                 password = System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')
             }
         }
+    }
+}
+
+// --- Static analysis (report-only grace period) ----------------------------
+// Both tools run as the `static` CI job. During the grace period neither can
+// block a build: SpotBugs findings are recorded but never fail the task, and
+// Spotless is detached from `check` (enforceCheck false) so the junit job's
+// `./gradlew build` stays style-agnostic. Gating flips on in a follow-up once
+// the finding volume is known; that follow-up also runs one spotlessApply per
+// repo to clear the baseline.
+spotbugs {
+    ignoreFailures = true
+    effort = com.github.spotbugs.snom.Effort.MAX
+}
+
+spotbugsTest {
+    enabled = false
+}
+
+spotbugsMain {
+    // HTML report into build/reports/spotbugs for the CI artifact upload.
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+
+spotless {
+    enforceCheck false
+    java {
+        // Minimal profile only: no formatter, so no repo-wide rewrites.
+        // Trailing whitespace, final newline, deterministic import order.
+        target 'src/*/java/**/*.java'
+        trimTrailingWhitespace()
+        endWithNewline()
+        importOrder()
     }
 }

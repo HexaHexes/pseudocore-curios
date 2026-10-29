@@ -1,0 +1,22 @@
+{
+  "replace": false,
+  "values": [
+    "pseudocore:copper_pseudocore",
+    "pseudocore:iron_pseudocore",
+    "pseudocore:gold_pseudocore",
+    "pseudocore:netherite_pseudocore",
+    { "id": "pseudocore:silver_pseudocore", "required": false },
+    { "id": "pseudocore:low_magisteel_pseudocore", "required": false },
+    { "id": "pseudocore:high_magisteel_pseudocore", "required": false },
+    { "id": "pseudocore:pure_magisteel_pseudocore", "required": false },
+    { "id": "pseudocore:mithril_pseudocore", "required": false },
+    { "id": "pseudocore:orichalcum_pseudocore", "required": false },
+    { "id": "pseudocore:adamantite_pseudocore", "required": false },
+    { "id": "pseudocore:hihiirokane_pseudocore", "required": false },
+    { "id": "pseudocore:copper_dragon_pseudocore", "required": false },
+    { "id": "pseudocore:iron_dragon_pseudocore", "required": false },
+    { "id": "pseudocore:silver_dragon_pseudocore", "required": false },
+    { "id": "pseudocore:gold_dragon_pseudocore", "required": false },
+    { "id": "pseudocore:netherite_dragon_pseudocore", "required": false }
+  ]
+}
