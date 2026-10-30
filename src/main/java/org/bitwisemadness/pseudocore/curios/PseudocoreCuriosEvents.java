@@ -95,6 +95,13 @@ public final class PseudocoreCuriosEvents {
         event.setCancellationResult(InteractionResult.SUCCESS);
         event.setCanceled(true);
         if (event.getEntity() instanceof ServerPlayer player) {
+            if (player.isShiftKeyDown()) {
+                // The clear gesture (#15) outranks the press while sneaking:
+                // same stack, different verb.
+                org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction
+                        .handle(player, event.getItemStack());
+                return;
+            }
             ReleaseRecallAction.press(player, event.getItemStack());
         }
     }

@@ -843,6 +843,125 @@ public final class PseudocoreCuriosGameTests {
         return UUID.fromString(record.mobUuid());
     }
 
+    /**
+     * #15 row 1 (default mode): sneak-clear on a filled core runs the
+     * shared release - the mob spawns at the player's feet and the core
+     * empties, same result as the hotkey. Driven handler-level (the issue
+     * wording); the non-sneak air click is #34's press, covered there.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void clearDefaultsToReleaseAndEmptiesTheCore(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a filled core to clear");
+        player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+        check(PseudocoreCuriosConfig.clearAction()
+                        == org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode.RELEASE,
+                "clear must default to release (#15)");
+
+        org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, hand);
+
+        check(hand.get(ModDataComponents.CONTAINED_MOB.get()) == null,
+                "the cleared core must be empty of its mob");
+        // By UUID: release restores the stored UUID, and every test's player
+        // shares the world spawn - only this cow proves THIS release.
+        check(helper.getLevel().getEntity(cow.getUUID()) != null,
+                "release mode must respawn the captured mob at the player - the hotkey's result");
+
+        helper.succeed();
+    }
+
+    /**
+     * #15 row 3 (destroy mode): the first click only arms, the second
+     * within the window executes - nothing is deleted on one click, and
+     * the mob never spawns (destruction is destruction). Mode injected
+     * directly: no live-config mutation spans the delayed hop.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void clearDestroyNeedsTheConfirmStep(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a filled core to destroy");
+        player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+
+        var destroy = org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode.DESTROY;
+        org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, hand, destroy);
+        check(hand.get(ModDataComponents.CONTAINED_MOB.get()) != null,
+                "the first click must only arm - one click can never eat a dragon (#15)");
+
+        helper.runAfterDelay(org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction.COOLDOWN_TICKS + 10,
+                () -> {
+                    org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, hand, destroy);
+                    check(hand.get(ModDataComponents.CONTAINED_MOB.get()) == null
+                                    && !hand.has(ModLinkageComponents.DEAD_MOB.get()),
+                            "the confirming click must delete the stored mob (#15)");
+                    // By the captured mob's UUID: release would RESTORE
+                    // it into the world, destroy never does - and the
+                    // shared spawn holds sibling tests' cows.
+                    check(helper.getLevel().getEntity(cow.getUUID()) == null,
+                            "destroy mode must never spawn the mob");
+                    helper.succeed();
+                });
+    }
+
+    /**
+     * #15 row 1 (death record): wiped instantly, config-independent - the
+     * record's explicit exit. Built directly rather than through the death
+     * flow: this row must not care how the record got there (or what the
+     * config says).
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void clearWipesDeathDataInstantly(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        hand.set(ModLinkageComponents.DEAD_MOB.get(),
+                new org.bitwisemadness.pseudocore.curios.death.DeadMobComponent(
+                        ResourceLocation.withDefaultNamespace("cow"),
+                        java.util.UUID.randomUUID(), new net.minecraft.nbt.CompoundTag(),
+                        ResourceLocation.withDefaultNamespace("player_attack"),
+                        "player", System.currentTimeMillis()));
+        player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+
+        // Default config is release - irrelevant here either way: no live
+        // mob exists, so no mode applies.
+        org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, hand);
+
+        check(!hand.has(ModLinkageComponents.DEAD_MOB.get()),
+                "the death record must be wiped instantly (#15)");
+        check(!hand.has(ModDataComponents.CONTAINED_MOB.get()),
+                "a wipe writes nothing else");
+
+        helper.succeed();
+    }
+
+    /**
+     * #15 row 2: an empty press is a silent no-op - and specifically does
+     * NOT consume the shared cooldown (proven by an immediate press
+     * reaching its own refusal instead of the throttle).
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void clearOnEmptyIsSilentAndFree(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+
+        org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, hand);
+
+        check(!hand.has(ModLinkageComponents.DEAD_MOB.get())
+                        && !hand.has(ModDataComponents.CONTAINED_MOB.get()),
+                "an empty no-op changes nothing");
+        var after = ReleaseRecallAction.press(player, hand);
+        check(after == ReleaseRecallAction.Refusal.NOT_LINKED,
+                "the no-op must not throttle the real triggers - expected the press's own "
+                        + "NOT_LINKED refusal, got " + after);
+
+        helper.succeed();
+    }
+
     /** Drop a stack into the Curios slot through the raw handler write. */
     private static void equipInSlot(ServerPlayer player, ItemStack stack) {
         var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
