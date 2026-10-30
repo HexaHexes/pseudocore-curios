@@ -23,6 +23,8 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
@@ -960,6 +962,66 @@ public final class PseudocoreCuriosGameTests {
                         + "NOT_LINKED refusal, got " + after);
 
         helper.succeed();
+    }
+
+    /**
+     * #28: the upgrade recipe (#113) must carry the linkage stamp - the
+     * addon's component rides pseudocore's generic component copy - and the
+     * upgraded core must still recall the mob the *original* core
+     * released. Driven through the real recipe (`pseudocore:copper_to_iron`,
+     * shipped unconditionally since alpha.7), so the serializer, the copy
+     * and the recall all get exercised end to end.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void upgradeRecipeKeepsTheLinkageStamp(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var copper = BuiltInRegistries.ITEM
+                .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
+                .orElse(null);
+        check(copper != null, "the copper core must exist");
+        ItemStack stack = new ItemStack(copper);
+        check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, stack);
+        check(ReleaseRecallAction.handle(player) == null, "the first press must release (#11)");
+        UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
+        check(linkage != null, "release must stamp the core");
+        LinkageRecord record = LinkageManager.find(player, linkage);
+        check(record != null, "release must record the mob");
+
+        var recipes = helper.getLevel().getServer().getRecipeManager();
+        var holder = recipes.byKey(
+                ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_to_iron")).orElse(null);
+        check(holder != null && holder.value() instanceof CraftingRecipe,
+                "pseudocore:copper_to_iron must be loaded - the pin carries the upgrade recipes (#28)");
+        CraftingRecipe recipe = (CraftingRecipe) holder.value();
+        ItemStack iron = new ItemStack(Items.IRON_INGOT);
+        CraftingInput input = CraftingInput.of(3, 3, java.util.List.of(
+                ItemStack.EMPTY, iron, ItemStack.EMPTY,
+                iron, stack, iron,
+                ItemStack.EMPTY, iron, ItemStack.EMPTY));
+        check(recipe.matches(input, helper.getLevel()),
+                "the cross of four iron ingots around the core must match");
+        ItemStack upgraded = recipe.assemble(input, helper.getLevel().registryAccess());
+        check(upgraded.is(org.bitwisemadness.pseudocore.registry.ModItems.IRON_PSEUDOCORE.get()),
+                "the upgrade must craft the iron core");
+        check(linkage.equals(upgraded.get(ModLinkageComponents.LINKAGE.get())),
+                "the upgrade must carry the linkage stamp verbatim (#28)");
+
+        equipInSlot(player, upgraded);
+        helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
+            check(ReleaseRecallAction.handle(player) == null,
+                    "the upgraded core must recall the mob the original released (#28)");
+            ContainedMobComponent restored = slotStack(player).get(ModDataComponents.CONTAINED_MOB.get());
+            check(restored != null, "recall must restore the contained_mob component");
+            check(restored.entityUuid().toString().equals(record.mobUuid()),
+                    "recall must resolve THE original record, got " + restored.entityUuid()
+                            + " vs " + record.mobUuid());
+            check(LinkageManager.find(player, linkage) == null,
+                    "the recall must forget the record like any other");
+            helper.succeed();
+        });
     }
 
     /** Drop a stack into the Curios slot through the raw handler write. */
