@@ -17,6 +17,9 @@
     { "id": "pseudocore:iron_dragon_pseudocore", "required": false },
     { "id": "pseudocore:silver_dragon_pseudocore", "required": false },
     { "id": "pseudocore:gold_dragon_pseudocore", "required": false },
-    { "id": "pseudocore:netherite_dragon_pseudocore", "required": false }
+    { "id": "pseudocore:netherite_dragon_pseudocore", "required": false },
+    { "id": "pseudocore:fire_dragonsteel_pseudocore", "required": false },
+    { "id": "pseudocore:ice_dragonsteel_pseudocore", "required": false },
+    { "id": "pseudocore:lightning_dragonsteel_pseudocore", "required": false }
   ]
 }
