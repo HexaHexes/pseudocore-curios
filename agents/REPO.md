@@ -28,14 +28,14 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (18 tests:
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (22 tests:
 smoke, the Gear Evolution NBT-retention gate, the linkage stamp/tag/record,
 the unload position refresh, the linkage cap/forget, the Curios slot
 accept/reject pair, the hotkey refusal/release pair, the recall quartet
 (capture, unreachable, wrong-core, anti-theft) with the waypoint payload
-folded in, the air right-click release/recall, and the death-preserve
-quintet (default-off, preserve+HAS_DEAD, unwhitelisted kill, linkage
-strictness, anti-theft yield)). `expectedTests = 18` in
+folded in, the air right-click release/recall, the death-preserve
+quintet, and the clear-gesture quartet (release default, destroy confirm,
+instant death-wipe, silent-and-free no-op)). `expectedTests = 22` in
 `build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
 from the `gametestMods` configuration.
@@ -50,7 +50,21 @@ from the `gametestMods` configuration.
   tests also need `timeoutTicks` on their `@GameTest` - a test awaiting a
   delayed callback never times out on its own and holds the batch open
   forever (CI's `timeout-minutes` is the outer belt, the annotation is the
-  inner one).
+  inner one). **The wedge also happens solo** (twice locally, once on CI,
+  with no second run anywhere): tests start, no failure is ever reported,
+  the batch line repeats until the outer timeout kills the job - the
+  standing remedy is a re-run, which has always passed; do not go hunting
+  inside test code for a phantom failure when the log shows zero
+  `failed at` lines.
+- Asserting a mob **died** vs was **captured** needs different evidence:
+  a naturally dead mob lingers in storage for its ~20-tick death
+  animation (`isDeadOrDying()`, not `getEntity(...) == null`), while
+  capture's `discard()` is immediate (absence by UUID is fair). And with
+  every player sharing the world spawn, *any* area scan must be replaced
+  by a UUID lookup - `releaseContained` restores the stored UUID, which
+  makes `level.getEntity(mob.getUUID())` both precise and contamination-
+  proof (an area scan once let one test's discard starve another's
+  recall).
 - Every mock player is placed at the world spawn, so concurrent tests share
   one activity area: entity assertions must resolve **by the record's
   UUID** (`level.getEntity(record.mobUuid())`), never by an AABB scan plus
@@ -68,6 +82,11 @@ from the `gametestMods` configuration.
   `deathSave*` flips: each death test flips ON and restores OFF **inside
   one synchronous body**, and only the HAS_DEAD press hop runs after the
   restore (the press never reads the switch).
+- One player, one throttle: `ReleaseRecallAction.checkCooldown`/`LAST_USE`
+  is shared by the hotkey, the air click and the clear gesture (#11/#34/#15)
+  - press-and-remember in one place, so no trigger can bypass or desync the
+  window, and a `destroy` confirm cannot dodge it either (its 5 s window
+  deliberately outlasts the cooldown).
 - `corpse` and `xaeros-minimap` are compileOnly optional deps referenced
   only behind `ModList` gates at runtime (Xaero only client-side) - the
   same class-load discipline as the IaF references in base pseudocore.

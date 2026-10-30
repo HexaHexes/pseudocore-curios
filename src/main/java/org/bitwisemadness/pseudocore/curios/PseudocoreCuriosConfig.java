@@ -73,11 +73,26 @@ public final class PseudocoreCuriosConfig {
         }
     }
 
+    /**
+     * What the clear gesture does to a filled core (#15); fail-open to
+     * {@link ClearActionMode#RELEASE} - the destructive path is only ever
+     * reached by an explicit, valid config value.
+     */
+    public static org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode clearAction() {
+        try {
+            return org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode
+                    .parse(COMMON.filledCoreClearAction.get());
+        } catch (RuntimeException notLoadedYet) {
+            return org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode.RELEASE;
+        }
+    }
+
     public static final class Common {
         public final ModConfigSpec.BooleanValue deathSaveEnabled;
         public final ModConfigSpec.ConfigValue<List<? extends String>> deathSaveDamageSources;
         public final ModConfigSpec.BooleanValue deathSaveAllowNonSlotCores;
         public final ModConfigSpec.BooleanValue deathSaveSearchCorpses;
+        public final ModConfigSpec.ConfigValue<String> filledCoreClearAction;
 
         public Common(ModConfigSpec.Builder builder) {
             builder.push("deathSave");
@@ -109,6 +124,17 @@ public final class PseudocoreCuriosConfig {
                             "mod). Dead config without Corpse installed - gated by mod",
                             "presence at runtime too.")
                     .define("searchCorpses", true);
+            filledCoreClearAction = builder
+                    .comment(
+                            "What sneak + right-click on air does to a FILLED core (#15):",
+                            "'release' (default): the mob spawns at your feet - the same",
+                            "result as the hotkey release. 'destroy': the stored NBT is",
+                            "deleted after a second sneak-click within 5 seconds, so a",
+                            "stray gesture can never eat a dragon. Any other value",
+                            "behaves as 'release'. A core holding only preserved death",
+                            "data is wiped instantly regardless of this setting - that",
+                            "is the record's explicit exit.")
+                    .define("filledCoreClearAction", "release");
             builder.pop();
         }
     }

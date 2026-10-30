@@ -131,15 +131,15 @@ public final class ReleaseRecallAction {
         var stacks = inventory == null ? null
                 : inventory.getCurios().get(PseudocoreCurios.SLOT_ID);
         if (stacks == null) {
-            return Refusal.NO_SLOT;
+            return refuse(player, Refusal.NO_SLOT);
         }
 
         ItemStack stack = stacks.getStacks().getStackInSlot(0);
         if (stack.isEmpty()) {
-            return Refusal.NO_CORE;
+            return refuse(player, Refusal.NO_CORE);
         }
         if (!isCore(stack.getItem())) {
-            return Refusal.NOT_CORE;
+            return refuse(player, Refusal.NOT_CORE);
         }
         return press(player, stack);
     }
@@ -155,29 +155,18 @@ public final class ReleaseRecallAction {
      * @return the refusal to tell the player, or null when the press acted
      */
     public static Refusal press(ServerPlayer player, ItemStack stack) {
-        long now = player.level().getGameTime();
-        Long last = LAST_USE.get(player.getUUID());
-        if (last != null && now - last < COOLDOWN_TICKS) {
-            return Refusal.COOLDOWN;
+        Refusal cooldown = checkCooldown(player);
+        if (cooldown != null) {
+            return refuse(player, cooldown);
         }
-        // Past every validation the press is remembered - including when the
-        // branch below refuses - so neither trigger can be used to probe
-        // release gates faster than the cooldown allows.
-        LAST_USE.put(player.getUUID(), now);
 
         boolean beast = stack.get(ModDataComponents.CONTAINED_MOB.get()) != null;
         boolean dragon = ModList.get().isLoaded("iceandfire")
                 && IafHornAccess.storedDragonType(stack) != null;
         if (beast || dragon) {
-            ServerLevel level = (ServerLevel) player.level();
-            // Release position per spec: the player's feet, their yaw.
-            var pos = player.position();
-            boolean released = beast
-                    ? PseudocoreItem.releaseContained(stack, level, pos, player.getYRot(), player)
-                    : IafHornAccess.releaseDragonAt(stack, level, pos, player.getYRot(), player);
             // A refused release has already said its piece through the base
             // API's own gates; the press consumed the cooldown above either way.
-            return released ? null : Refusal.GATED;
+            return releaseNow(player, stack) ? null : Refusal.GATED;
         }
         // Death-preserve state (#14): a dead-record core reports itself and
         // never releases (nothing live to release) nor recalls (the mob is
@@ -189,6 +178,46 @@ public final class ReleaseRecallAction {
         }
         // Empty core: the recall flow (#12).
         return recall(player, stack);
+    }
+
+    /**
+     * The one throttle shared by every trigger - hotkey, air click, clear
+     * gesture (#11/#34/#15): returns the cooldown refusal while locked, and
+     * <b>remembers the press the moment it passes</b> - so no trigger can
+     * probe release gates faster than the window allows. Callers message
+     * the refusal; this method stays silent by design.
+     */
+    static Refusal checkCooldown(ServerPlayer player) {
+        long now = player.level().getGameTime();
+        Long last = LAST_USE.get(player.getUUID());
+        if (last != null && now - last < COOLDOWN_TICKS) {
+            return Refusal.COOLDOWN;
+        }
+        LAST_USE.put(player.getUUID(), now);
+        return null;
+    }
+
+    /**
+     * Spawn the stored mob at the player's feet - one implementation for
+     * the hotkey press, the air click and the clear gesture's `release`
+     * mode (#15's shared-helper requirement), applying the base APIs'
+     * gates as always.
+     *
+     * @return true when something was released, false when the stack held
+     *         nothing live (callers decide what that refusal means)
+     */
+    static boolean releaseNow(ServerPlayer player, ItemStack stack) {
+        boolean beast = stack.get(ModDataComponents.CONTAINED_MOB.get()) != null;
+        boolean dragon = ModList.get().isLoaded("iceandfire")
+                && IafHornAccess.storedDragonType(stack) != null;
+        if (!beast && !dragon) {
+            return false;
+        }
+        ServerLevel level = (ServerLevel) player.level();
+        var pos = player.position();
+        return beast
+                ? PseudocoreItem.releaseContained(stack, level, pos, player.getYRot(), player)
+                : IafHornAccess.releaseDragonAt(stack, level, pos, player.getYRot(), player);
     }
 
     /**
