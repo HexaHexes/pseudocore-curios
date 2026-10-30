@@ -1,7 +1,6 @@
 package org.bitwisemadness.pseudocore.curios;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -82,16 +81,19 @@ public final class PseudocoreCuriosEvents {
      * <p>Both sides cancel with SUCCESS (the click is consumed, the arm
      * swings); only the server runs the press, which carries the shared
      * cooldown with the hotkey - one player, one throttle, whichever
-     * trigger they use. Right-clicking a block face that the base's
-     * {@code useOn} consumes never reaches this event (the client sends
-     * only the block interaction), so the two release paths cannot both
-     * run on one click.</p>
+     * trigger they use. Either hand works (#51): the main-hand event, when
+     * claimed, stops vanilla from attempting the offhand use at all, so one
+     * click is at most one press. Right-clicking a block face that the
+     * base's {@code useOn} consumes never reaches this event (the client
+     * sends only the block interaction), so the two release paths cannot
+     * both run on one click.</p>
      */
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (event.getHand() != InteractionHand.MAIN_HAND) {
-            return;
-        }
+        // Both hands (#51): the event's stack IS the clicked hand's stack,
+        // so nothing else distinguishes them. No double press with cores in
+        // both hands - the main-hand event cancels with SUCCESS first and
+        // vanilla never attempts the offhand use.
         if (!ReleaseRecallAction.isCore(event.getItemStack().getItem())) {
             return;
         }
