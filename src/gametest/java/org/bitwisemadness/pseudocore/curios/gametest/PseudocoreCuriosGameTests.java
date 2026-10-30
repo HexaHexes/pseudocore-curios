@@ -1058,6 +1058,31 @@ public final class PseudocoreCuriosGameTests {
         helper.succeed();
     }
 
+    /**
+     * #51: the air press must also claim an OFFHAND core's click - the
+     * listener's old main-hand-only filter ignored the second hand
+     * entirely. Main hand stays empty (the vanilla condition under which
+     * the offhand use runs at all); the shared throttle again proves the
+     * press ran.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void offhandCorePressesThroughTheAirListener(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        player.setItemSlot(EquipmentSlot.OFFHAND, hand);
+
+        var event = new PlayerInteractEvent.RightClickItem(player, InteractionHand.OFF_HAND);
+        PseudocoreCuriosEvents.onRightClickItem(event);
+
+        check(event.isCanceled(),
+                "the air listener must claim an offhand core's click (#51)");
+        var after = ReleaseRecallAction.press(player, hand);
+        check(after == ReleaseRecallAction.Refusal.COOLDOWN,
+                "the listener must route into the press - the consumed cooldown is the proof, got " + after);
+
+        helper.succeed();
+    }
+
     /** Drop a stack into the Curios slot through the raw handler write. */
     private static void equipInSlot(ServerPlayer player, ItemStack stack) {
         var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
