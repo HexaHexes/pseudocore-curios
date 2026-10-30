@@ -316,9 +316,12 @@ public final class ReleaseRecallAction {
      * the registry namespace - see the class javadoc: the dragon class cannot
      * be named on this addon's classpath, and {@code ModItems} registers
      * nothing but cores, so the namespace answers exactly what the instanceof
-     * would.</p>
+     * would. Public because the air right-click listener (#34) gates on this
+     * too: an {@code instanceof PseudocoreItem} there locked the entire
+     * dragon line out of the press family - {@code DragonPseudocoreItem}
+     * extends IaF's horn item, not {@code PseudocoreItem} (#48).</p>
      */
-    private static boolean isCore(Item item) {
+    public static boolean isCore(Item item) {
         if (item instanceof PseudocoreItem) {
             return true;
         }

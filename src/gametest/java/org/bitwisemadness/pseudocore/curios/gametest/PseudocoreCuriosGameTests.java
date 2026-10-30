@@ -29,10 +29,12 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
+import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosEvents;
 import org.bitwisemadness.pseudocore.curios.death.DeadMobComponent;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
@@ -1024,6 +1026,38 @@ public final class PseudocoreCuriosGameTests {
         });
     }
 
+    /**
+     * #48: the air press must claim a DRAGON core's click - the listener's
+     * old {@code instanceof PseudocoreItem} gate silently excluded the whole
+     * line ({@code DragonPseudocoreItem} extends IaF's horn item). Drives
+     * the listener itself; the shared throttle proves the press ran: the
+     * second (direct) press can only answer COOLDOWN because the first one
+     * consumed the window. Needs IaF staged for gametests - without it the
+     * dragon line does not even register.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void dragonCorePressesThroughTheAirListener(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var dragonCore = BuiltInRegistries.ITEM.getOptional(
+                ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_dragon_pseudocore"))
+                .orElse(null);
+        check(dragonCore != null,
+                "the dragon line must exist in this environment - IaF is staged for gametests (#48)");
+        ItemStack hand = new ItemStack(dragonCore);
+        player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+
+        var event = new PlayerInteractEvent.RightClickItem(player, InteractionHand.MAIN_HAND);
+        PseudocoreCuriosEvents.onRightClickItem(event);
+
+        check(event.isCanceled(),
+                "the air listener must claim a dragon core's click (#48 - instanceof gate regression)");
+        var after = ReleaseRecallAction.press(player, hand);
+        check(after == ReleaseRecallAction.Refusal.COOLDOWN,
+                "the listener must route into the press - the consumed cooldown is the proof, got " + after);
+
+        helper.succeed();
+    }
+
     /** Drop a stack into the Curios slot through the raw handler write. */
     private static void equipInSlot(ServerPlayer player, ItemStack stack) {
         var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
@@ -1112,6 +1146,16 @@ public final class PseudocoreCuriosGameTests {
             }
         }
         curiosChannels.add(ResourceLocation.fromNamespaceAndPath("neoforge", "advanced_open_screen"));
+        // IaF CE syncs NeoForge attachments to tracking players on every
+        // living tick and does NOT catch a rejected send (#48's environment
+        // discovery): without this id, the first living entity near a mock
+        // player crashes the whole suite the moment Ice and Fire is staged.
+        curiosChannels.add(ResourceLocation.fromNamespaceAndPath("neoforge", "sync_attachments"));
+        // Tensura's gamerule pushes (integer and boolean variants) are
+        // bus-caught but stack-trace per send; same readability treatment
+        // as ManasCore above.
+        curiosChannels.add(ResourceLocation.fromNamespaceAndPath("tensura", "send_gamerule_update_integer"));
+        curiosChannels.add(ResourceLocation.fromNamespaceAndPath("tensura", "send_gamerule_update_boolean"));
         // Our own clientbound payload (#13): the mock connection accepts only
         // listed ad-hoc channels, and unreachable() sends this one.
         curiosChannels.add(ResourceLocation.fromNamespaceAndPath(

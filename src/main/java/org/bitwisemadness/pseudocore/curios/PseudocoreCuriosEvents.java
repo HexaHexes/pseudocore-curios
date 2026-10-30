@@ -11,7 +11,6 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.event.PseudocoreReleaseEvent;
-import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 
 /**
  * Server-side wiring for linkage tracking and the press triggers (#8, #34).
@@ -71,10 +70,14 @@ public final class PseudocoreCuriosEvents {
      * {@code Item.use} is <i>declared</i>; this cannot target the subclass
      * for a method it does not override).
      *
-     * <p>Scope: the beast line. {@code DragonPseudocoreItem} cannot be named
-     * on this addon's classpath (IaF's horn item is its superclass - the
-     * #11 compile wall), so a dragon core's air click still needs a
-     * pseudocore-side hook; noted on #34.</p>
+     * <p>Scope: both lines (#48). The gate is
+     * {@link ReleaseRecallAction#isCore}, the namespace-based predicate the
+     * hotkey path uses - this listener originally gated on
+     * {@code instanceof PseudocoreItem}, which silently excluded the entire
+     * dragon line ({@code DragonPseudocoreItem} extends IaF's horn item, not
+     * {@code PseudocoreItem}), and #34's "dragon cores need a
+     * pseudocore-side hook" note turned out to need nothing more than the
+     * check the hotkey already had.</p>
      *
      * <p>Both sides cancel with SUCCESS (the click is consumed, the arm
      * swings); only the server runs the press, which carries the shared
@@ -89,7 +92,7 @@ public final class PseudocoreCuriosEvents {
         if (event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
-        if (!(event.getItemStack().getItem() instanceof PseudocoreItem)) {
+        if (!ReleaseRecallAction.isCore(event.getItemStack().getItem())) {
             return;
         }
         event.setCancellationResult(InteractionResult.SUCCESS);
