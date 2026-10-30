@@ -90,6 +90,21 @@ class GearEvolutionChainTest {
             {"netherite_dragon_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
     };
 
+    /**
+     * The dragonsteel tiers (#27): parallel element branches after
+     * netherite_dragon - not a linear ladder, so each one starts at the
+     * IaF dragonsteel armor's own floor instead of a predecessor's
+     * maxEP (the predecessor is uncapped - a ceiling, not a reachable
+     * number), carries the uncapped sentinel, and stays terminal.
+     */
+    private static final long DRAGONSTEEL_ARMOR_FLOOR = 750_000L;
+
+    private static final String[][] DRAGONSTEEL = {
+            {"fire_dragonsteel_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
+            {"ice_dragonsteel_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
+            {"lightning_dragonsteel_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
+    };
+
     private static final Pattern ITEM = Pattern.compile("\"item\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern MIN = Pattern.compile("\"minEP\"\\s*:\\s*(\\d+)");
     private static final Pattern MAX = Pattern.compile("\"maxEP\"\\s*:\\s*(\\d+)");
@@ -107,12 +122,37 @@ class GearEvolutionChainTest {
             files.filter(p -> p.toString().endsWith(".json"))
                     .forEach(p -> shipped.add(p.getFileName().toString()));
         }
-        assertEquals(BEAST.length + DRAGON.length, shipped.size(),
-                "both ladders must ship in full - a missing tier stalls evolution mid-ladder");
-        for (String[][] ladder : new String[][][]{BEAST, DRAGON}) {
+        assertEquals(BEAST.length + DRAGON.length + DRAGONSTEEL.length, shipped.size(),
+                "all three ladders must ship in full - a missing tier stalls evolution mid-ladder");
+        for (String[][] ladder : new String[][][]{BEAST, DRAGON, DRAGONSTEEL}) {
             for (String[] tier : ladder) {
                 assertTrue(shipped.contains(tier[0] + ".json"),
                         "missing chain file for tier: " + tier[0]);
+            }
+        }
+    }
+
+    /**
+     * The dragonsteel triple (#27): IaF's armor floor as each row's start,
+     * the uncapped sentinel, terminal (parallel elements chain nowhere),
+     * declared item, numeric gain.
+     */
+    @Test
+    void dragonsteelTiersCarryTheArmorFloorAndStayTerminal() throws IOException {
+        for (String[] tier : DRAGONSTEEL) {
+            Chain chain = readChain(tier[0]);
+            String label = "pseudocore:" + tier[0];
+            assertEquals(label, chain.item(), tier[0] + " must declare its own item id");
+            assertEquals(DRAGONSTEEL_ARMOR_FLOOR, chain.min(),
+                    label + ": minEP must be the dragonsteel armor's floor (#27) - its "
+                            + "predecessor is uncapped, so prev-max does not apply");
+            assertEquals(Long.parseLong(tier[1]), chain.max(),
+                    label + ": maxEP must be the uncapped sentinel");
+            assertTrue(chain.evolution() == null,
+                    label + " is a parallel element branch and must stay terminal");
+            if (chain.gain() != null) {
+                assertTrue(Pattern.compile("[0-9.]+").matcher(chain.gain()).matches(),
+                        label + ": epGain must be numeric, got " + chain.gain());
             }
         }
     }
