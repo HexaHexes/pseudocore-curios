@@ -28,17 +28,21 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (22 tests:
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (24 tests:
 smoke, the Gear Evolution NBT-retention gate, the linkage stamp/tag/record,
 the unload position refresh, the linkage cap/forget, the Curios slot
 accept/reject pair, the hotkey refusal/release pair, the recall quartet
 (capture, unreachable, wrong-core, anti-theft) with the waypoint payload
-folded in, the air right-click release/recall, the death-preserve
-quintet, and the clear-gesture quartet (release default, destroy confirm,
-instant death-wipe, silent-and-free no-op)). `expectedTests = 22` in
+folded in, the air right-click release/recall pair, the upgrade-stamp
+cross-repo round trip, the death-preserve quintet, the clear-gesture
+quartet (release default, destroy confirm, instant death-wipe,
+silent-and-free no-op), and the dragon-core air-press gate (#48)).
+`expectedTests = 24` in
 `build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
-from the `gametestMods` configuration.
+from the `gametestMods` configuration - which carries **Ice and Fire CE
+(+ Jupiter, Uranus)** so the dragon line registers in the test world
+(#48; headless IaF is proven by pseudocore's own CI).
 
 **Gotchas**
 - `mod_id` contains underscores while the Java package is
@@ -87,6 +91,26 @@ from the `gametestMods` configuration.
   - press-and-remember in one place, so no trigger can bypass or desync the
   window, and a `destroy` confirm cannot dodge it either (its 5 s window
   deliberately outlasts the cooldown).
+- **Never gate on `instanceof PseudocoreItem` for "is this a core"**: the
+  dragon line extends IaF's horn item instead (#48 shipped exactly this
+  bug in the air listener - the whole dragon line silently skipped the
+  press family). `ReleaseRecallAction.isCore` is the namespace-based
+  predicate; use it everywhere, including new dispatch points. The two
+  capture dispatchers (`recall`, `DeathPreserveEvents`) are the exception
+  that proves the rule: they use the instanceof on purpose, to pick the
+  beast-vs-dragon CAPTURE path (dragon cores fall into the
+  `tryCaptureDragon` branch by not matching).
+- **Every mod that pushes clientbound payloads to tracking players must be
+  whitelisted in the mock connection's ad-hoc channel set** (`mockPlayer`,
+  `ChannelAttributes.getOrCreateAdHocChannels`): the stub connection never
+  ran the login handshake, so `NetworkRegistry.checkPacket` rejects any
+  unlisted payload. A mod that CATCHES its rejected sends only stack-traces
+  (Curios, ManasCore, Tensura - noisy, whitelisted for readable logs); one
+  that does NOT catch them crashes the whole suite - IaF CE's
+  `neoforge:sync_attachments` is exactly that (found by staging IaF for the
+  dragon line, #48). When a new optional dep joins `gametestMods`, check
+  whether it syncs payloads per tick and extend the whitelist in the same
+  change.
 - `corpse` and `xaeros-minimap` are compileOnly optional deps referenced
   only behind `ModList` gates at runtime (Xaero only client-side) - the
   same class-load discipline as the IaF references in base pseudocore.

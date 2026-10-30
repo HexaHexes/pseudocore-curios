@@ -164,6 +164,14 @@ dependencies {
     gametestMods "curse.maven:smartbrainlib-661293:${smartbrainlib_file_id}"
     gametestMods "curse.maven:tensura-reincarnated-643695:${tensura_file_id}"
     gametestMods "curse.maven:terrablender-940057:${terrablender_file_id}"
+    // Ice and Fire CE for the dragon line's gametest coverage (#48): the air
+    // press gate fix needs a dragon core to EXIST in the test world, and the
+    // dragon line only registers with IaF present. CE 2.1.4 hard-requires
+    // Jupiter and Uranus and refuses to load without them - the same pins
+    // pseudocore's dev runs carry, proven headless by pseudocore's own CI.
+    gametestMods "curse.maven:iceandfire-ce-1040076:${iceandfire_file_id}"
+    gametestMods "curse.maven:jupiter-1072905:${jupiter_file_id}"
+    gametestMods "curse.maven:uranus-1010827:${uranus_file_id}"
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -195,7 +203,7 @@ tasks.register('prepareGametestMods', Sync) {
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
     dependsOn 'prepareGametestMods'
 
-    def expectedTests = 23
+    def expectedTests = 24
     doLast {
         def log = file('run/logs/latest.log')
         if (!log.exists()) {
