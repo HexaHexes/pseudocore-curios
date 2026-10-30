@@ -6,5 +6,9 @@
   "pseudocore_curios.message.not_core": "That is not a Pseudocore core",
   "pseudocore_curios.message.cooldown": "Give the core a moment",
   "pseudocore_curios.message.not_linked": "This core has not released anything it can recall",
-  "pseudocore_curios.message.unreachable": "%s was last seen at %s / %s / %s in %s - waypoint marked"
+  "pseudocore_curios.message.unreachable": "%s was last seen at %s / %s / %s in %s - waypoint marked",
+  "pseudocore_curios.message.preserved": "Your %s has been preserved in its core.",
+  "pseudocore_curios.message.fell": "Your %s fell to %s.",
+  "pseudocore_curios.message.has_dead": "%s holds a preserved soul - clear it or capture over it.",
+  "pseudocore_curios.tooltip.preserved": "%s - preserved after dying to a %s."
 }

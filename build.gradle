@@ -143,6 +143,10 @@ dependencies {
     // imports it, and that class never loads on a server.
     compileOnly "curse.maven:xaeros-minimap-263420:${xaero_minimap_file_id}"
 
+    // Corpse - optional death-save search target (#14). Referenced only
+    // behind the ModList gate at runtime, the same discipline as Xaero.
+    compileOnly "curse.maven:corpse-316582:${corpse_file_id}"
+
     // For the run-only mods folder: Pseudocore from GitHub Packages, Curios
     // from CurseMaven - the smoke test needs both present so the mod's own
     // required dependencies resolve at FML load. The Tensura/Gear Evolution
@@ -191,7 +195,7 @@ tasks.register('prepareGametestMods', Sync) {
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
     dependsOn 'prepareGametestMods'
 
-    def expectedTests = 13
+    def expectedTests = 18
     doLast {
         def log = file('run/logs/latest.log')
         if (!log.exists()) {

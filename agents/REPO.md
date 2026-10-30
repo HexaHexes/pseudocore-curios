@@ -28,12 +28,14 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (12 tests:
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (18 tests:
 smoke, the Gear Evolution NBT-retention gate, the linkage stamp/tag/record,
 the unload position refresh, the linkage cap/forget, the Curios slot
 accept/reject pair, the hotkey refusal/release pair, the recall quartet
-(capture, unreachable, wrong-core, anti-theft), and the waypoint payload
-assertion folded into the unreachable test). `expectedTests = 12` in
+(capture, unreachable, wrong-core, anti-theft) with the waypoint payload
+folded in, the air right-click release/recall, and the death-preserve
+quintet (default-off, preserve+HAS_DEAD, unwhitelisted kill, linkage
+strictness, anti-theft yield)). `expectedTests = 18` in
 `build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
 from the `gametestMods` configuration.
@@ -58,6 +60,25 @@ from the `gametestMods` configuration.
   addon's own clientbound payload ids added (`unreachable_recall`) - any
   `sendToPlayer` of an unlisted payload throws
   `Payload ... may not be sent to the client`.
+- The pseudocore pin carries tamed-only capture (#111, alpha.7+):
+  `mockPlayer` pins `tamedMobsOnly` off for copper/iron once, suite-wide,
+  never restored - a flip-flop across parallel tests would race (each
+  gametest body is atomic within its tick, so an idempotent one-way pin is
+  safe and a restore is not). The same one-way rule governs the
+  `deathSave*` flips: each death test flips ON and restores OFF **inside
+  one synchronous body**, and only the HAS_DEAD press hop runs after the
+  restore (the press never reads the switch).
+- `corpse` and `xaeros-minimap` are compileOnly optional deps referenced
+  only behind `ModList` gates at runtime (Xaero only client-side) - the
+  same class-load discipline as the IaF references in base pseudocore.
+  The sharp edge: FML's automatic-subscriber scan calls
+  `getDeclaredMethods()` on `@EventBusSubscriber` classes, which resolves
+  every synthetic lambda parameter eagerly - a listener-class lambda
+  taking `CorpseEntity` made mod construction throw `NoClassDefFoundError`
+  at startup whenever Corpse was absent (proven live). Optional-dep types
+  therefore go in **non-scanned helper classes** (no annotation, vanilla
+  only method signatures) called behind the gate; see
+  `death/CorpseSearch.java`.
 - The mixin config is registered but empty; any mixin added here must also set
   the `package` field in `pseudocore_curios.mixins.json`.
 - Capture/recall deliberately reuse Pseudocore's `tryCapture` /
