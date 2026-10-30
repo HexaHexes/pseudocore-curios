@@ -1,14 +1,13 @@
 package org.bitwisemadness.pseudocore.curios.linkage;
 
 import com.mojang.serialization.Codec;
+import java.util.UUID;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
-import java.util.UUID;
 
 /**
  * The linkage stamp a core receives when it releases its mob (#8): the UUID

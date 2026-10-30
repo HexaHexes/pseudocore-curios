@@ -1,8 +1,8 @@
 package org.bitwisemadness.pseudocore.curios.client;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;

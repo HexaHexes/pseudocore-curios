@@ -1,13 +1,12 @@
 package org.bitwisemadness.pseudocore.curios.linkage;
 
 import com.mojang.serialization.Codec;
+import java.util.LinkedHashMap;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
-
-import java.util.LinkedHashMap;
 
 /**
  * The per-player attachment behind linkage tracking (#8): one record per
