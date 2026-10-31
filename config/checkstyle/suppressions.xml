@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN" "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<!-- Grandfathered findings from the Checkstyle pull: burn-down only, never new code. -->
+<suppressions>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="99"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="123"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="212"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="471"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="1115"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="1130"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="1143"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="1161"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosGameTests.java" lines="1174"/>
+    <suppress checks="RegexpMultiline" files="ReleaseRecallAction.java" lines="171"/>
+    <suppress checks="RegexpMultiline" files="PseudocoreCuriosEvents.java" lines="93"/>
+</suppressions>
