@@ -2,5 +2,10 @@
   "item": "pseudocore:netherite_dragon_pseudocore",
   "minEP": 750000,
   "maxEP": 100000000,
-  "epGain": 0.04
+  "epGain": 0.04,
+  "evolutionOptions": [
+    { "id": "pseudocore:fire_dragonsteel_pseudocore", "specialization": "fire" },
+    { "id": "pseudocore:ice_dragonsteel_pseudocore", "specialization": "ice" },
+    { "id": "pseudocore:lightning_dragonsteel_pseudocore", "specialization": "lightning" }
+  ]
 }

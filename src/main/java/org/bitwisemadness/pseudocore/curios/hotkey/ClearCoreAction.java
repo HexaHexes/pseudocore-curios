@@ -76,6 +76,8 @@ public final class ClearCoreAction {
         if (dead && !live) {
             // The record's explicit exit - instant, whatever the config says.
             stack.remove(ModLinkageComponents.DEAD_MOB.get());
+            // This is a clear too (#60): the core forgets its element.
+            org.bitwisemadness.pseudocore.util.GearEvolutionBridge.clearSpecialization(stack);
             return;
         }
 
@@ -115,5 +117,8 @@ public final class ClearCoreAction {
         if (hornType != null) {
             stack.remove(hornType);
         }
+        // The element trait (#60): a cleared core forgets its dragon
+        // element too - back to "never held one" for the branch evolution.
+        org.bitwisemadness.pseudocore.util.GearEvolutionBridge.clearSpecialization(stack);
     }
 }
