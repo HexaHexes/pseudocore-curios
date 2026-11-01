@@ -1,10 +1,9 @@
 package org.bitwisemadness.pseudocore.curios;
 
+import java.util.List;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.ModConfigSpec;
-
-import java.util.List;
 
 /**
  * This addon's server config (#14): the death-preserve switches.

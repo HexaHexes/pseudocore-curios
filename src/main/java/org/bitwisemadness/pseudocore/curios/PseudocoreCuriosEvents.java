@@ -90,10 +90,9 @@ public final class PseudocoreCuriosEvents {
      */
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        // Both hands (#51): the event's stack IS the clicked hand's stack,
-        // so nothing else distinguishes them. No double press with cores in
-        // both hands - the main-hand event cancels with SUCCESS first and
-        // vanilla never attempts the offhand use.
+        // Both hands (#51): the event's stack IS the clicked hand's stack, so nothing else
+        // distinguishes them. No double press with cores in both hands - the main-hand event
+        // cancels with SUCCESS first and vanilla never attempts the offhand use.
         if (!ReleaseRecallAction.isCore(event.getItemStack().getItem())) {
             return;
         }
