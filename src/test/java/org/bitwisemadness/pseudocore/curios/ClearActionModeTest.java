@@ -1,9 +1,9 @@
 package org.bitwisemadness.pseudocore.curios;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * #15's config parsing: the documented values resolve, and every invalid

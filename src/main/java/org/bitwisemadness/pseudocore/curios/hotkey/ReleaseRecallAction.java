@@ -168,11 +168,9 @@ public final class ReleaseRecallAction {
             // API's own gates; the press consumed the cooldown above either way.
             return releaseNow(player, stack) ? null : Refusal.GATED;
         }
-        // Death-preserve state (#14): a dead-record core reports itself and
-        // never releases (nothing live to release) nor recalls (the mob is
-        // gone - the record could only answer UNREACHABLE). Live storage
-        // plus stale death data never reaches this branch: the beast/dragon
-        // check above wins - the issue's "counts as filled" rule.
+        // Death-preserve state (#14): a dead-record core reports itself and never releases
+        // (nothing live) nor recalls (the mob is gone - the record could only answer UNREACHABLE).
+        // Live storage plus stale death data never reaches this branch: the beast/dragon check wins.
         if (stack.has(org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents.DEAD_MOB.get())) {
             return refuse(player, Refusal.HAS_DEAD, stack.getHoverName());
         }

@@ -3,13 +3,11 @@ package org.bitwisemadness.pseudocore.curios.death;
 import de.maxhenkel.corpse.corelib.death.Death;
 import de.maxhenkel.corpse.corelib.death.DeathManager;
 import de.maxhenkel.corpse.entities.CorpseEntity;
+import java.util.List;
+import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
-import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
-
-import java.util.List;
-import java.util.UUID;
 
 /**
  * The corpse leg of the death-preserve search (#14), deliberately its own

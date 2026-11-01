@@ -1,5 +1,8 @@
 package org.bitwisemadness.pseudocore.curios.hotkey;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -10,10 +13,6 @@ import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import org.bitwisemadness.pseudocore.util.IafHornAccess;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * Sneak + right-click on air clears the core (#15).

@@ -1,5 +1,6 @@
 package org.bitwisemadness.pseudocore.curios.death;
 
+import java.util.UUID;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -9,8 +10,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
@@ -21,8 +22,6 @@ import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import org.bitwisemadness.pseudocore.util.IafHornAccess;
-
-import java.util.UUID;
 
 /**
  * The death-preserve hook (#14): a tracked mob about to die from a

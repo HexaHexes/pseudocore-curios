@@ -9,10 +9,10 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import org.bitwisemadness.pseudocore.client.PseudocoreTintHandler;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.death.DeadMobComponent;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
-import org.bitwisemadness.pseudocore.client.PseudocoreTintHandler;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import org.bitwisemadness.pseudocore.util.OrbColors;
 

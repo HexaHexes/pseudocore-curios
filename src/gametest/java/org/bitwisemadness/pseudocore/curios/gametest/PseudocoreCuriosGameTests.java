@@ -41,7 +41,6 @@ import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
 import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
-import org.bitwisemadness.pseudocore.curios.net.UnreachableRecallS2C;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
@@ -96,10 +95,9 @@ public final class PseudocoreCuriosGameTests {
         check(before != null, "capture must store the contained_mob component");
         PseudocoreCurios.LOGGER.info("retention stage: captured");
 
-        // Put Gear Evolution at the copper tier's cap - 5,500, the maxEP this
-        // mod's own addon_chains declares (#33's armor-aligned curve) - and
-        // reconcile once, as live play has by the time gear fills: reconcile
-        // wires the chain's caps and marks the stack tracked.
+        // Put Gear Evolution at the copper tier's cap - 5,500, the maxEP this mod's own
+        // addon_chains declares (#33's armor-aligned curve) - and reconcile once, as live play
+        // has by the time gear fills: reconcile wires the chain's caps and marks the stack tracked.
         DataComponentType<Double> maxEp = (DataComponentType<Double>) BuiltInRegistries.DATA_COMPONENT_TYPE
                 .getOptional(ResourceLocation.fromNamespaceAndPath("tensura", "max_existence_point"))
                 .orElse(null);
@@ -120,12 +118,9 @@ public final class PseudocoreCuriosGameTests {
         check(core.get(ModDataComponents.CONTAINED_MOB.get()) != null,
                 "reconciliation must keep the contained_mob component");
 
-        // The pack's real trigger: a kill with the gear held. In this stack
-        // every damage pipeline bounces (both player-sourced and generic were
-        // refused pre-health), so the test drives the death itself: the award
-        // paths key on the death event with the player as the source, which is
-        // exactly what die(playerAttack(player)) fires. The core is already in
-        // the main hand from the reconcile setup above.
+        // The pack's real trigger: a kill with the gear held. Every damage pipeline bounces in this
+        // stack (both refused pre-health), so the test drives the death itself: the award paths key
+        // on a death event with the player as source - what die(playerAttack(player)) fires, core in hand.
         cow.setHealth(0.0F);
         cow.die(player.damageSources().playerAttack(player));
         PseudocoreCurios.LOGGER.info("retention stage: death driven");
@@ -209,10 +204,9 @@ public final class PseudocoreCuriosGameTests {
                 "release must succeed");
         UUID linkage = stack.get(ModLinkageComponents.LINKAGE.get());
 
-        // Capture discarded the original; the tagged entity is the copy that
-        // releaseContained spawned. It wanders, then its chunk unloads:
-        // NeoForge fires the leave event with the live entity, and the handler
-        // records the final position - driven through the real event.
+        // Capture discarded the original; the tagged entity is the copy that releaseContained
+        // spawned. It wanders, then its chunk unloads: NeoForge fires the leave event with the
+        // live entity, and the handler records the final position - driven through the real event.
         var released = helper.getLevel().getEntitiesOfClass(Cow.class, new AABB(pos, pos).inflate(3));
         check(!released.isEmpty(), "the released cow must exist in the world");
         var spawned = released.get(0);
@@ -468,11 +462,9 @@ public final class PseudocoreCuriosGameTests {
             check(slotStack(player).get(ModLinkageComponents.LINKAGE.get()) != null,
                     "the core keeps its stamp - the record stays answerable");
 
-            // The waypoint half's server side (#13): the exact payload the
-            // branch hands to PacketDistributor - payloadFor is the one
-            // builder unreachable() calls, one line away - carrying the
-            // record's name, its position with the message's rounding, and
-            // the dimension id.
+            // The waypoint half's server side (#13): the exact payload the branch hands to
+            // PacketDistributor - payloadFor is the one builder unreachable() calls, one line away -
+            // carrying the record's name, its position with the message's rounding, and the dimension id.
             var waypoint = ReleaseRecallAction.payloadFor(record);
             check(waypoint.name().equals(record.name()),
                     "the waypoint must carry the mob's name, got " + waypoint.name());
@@ -1112,12 +1104,9 @@ public final class PseudocoreCuriosGameTests {
      */
     private static ServerPlayer mockPlayer(GameTestHelper helper) {
         PseudocoreCurios.LOGGER.info("retention stage: mockPlayer building");
-        // pseudocore alpha.7+ defaults tamedMobsOnly ON for copper..netherite
-        // (#111), which would refuse every untamed probe mob in this suite.
-        // One idempotent, suite-wide pin-off - never restored: a flip-flop
-        // across parallel tests would race, and run/ is ephemeral. The gate
-        // has its own test in pseudocore's suite; this harness only needs
-        // capture to work under any default.
+        // pseudocore alpha.7+ defaults tamedMobsOnly ON for copper..netherite (#111), refusing
+        // every untamed probe mob in this suite. One idempotent suite-wide pin-off - never restored:
+        // a flip-flop across parallel tests would race. The gate has its own test; capture must work.
         org.bitwisemadness.pseudocore.config.PseudocoreConfig.COMMON
                 .tier("copper").ifPresent(s -> s.tamedMobsOnly.set(false));
         org.bitwisemadness.pseudocore.config.PseudocoreConfig.COMMON
@@ -1127,10 +1116,9 @@ public final class PseudocoreCuriosGameTests {
         var player = new ServerPlayer(server, helper.getLevel(), profile,
                 ClientInformation.createDefault());
 
-        // A real netty channel so placeNewPlayer's packet writes land somewhere:
-        // a bare Connection has a null channel and vanilla's first send NPEs.
-        // channelActive() is what assigns Connection.channel, and the embedded
-        // channel supplies a non-null remote address for the same call.
+        // A real netty channel so placeNewPlayer's packet writes land somewhere: a bare
+        // Connection has a null channel and vanilla's first send NPEs. channelActive() assigns
+        // Connection.channel, and the embedded channel supplies a non-null remote address for it.
         var embedded = new io.netty.channel.embedded.EmbeddedChannel();
         embedded.pipeline().addFirst(new io.netty.channel.ChannelInboundHandlerAdapter());
         var connection = new Connection(PacketFlow.SERVERBOUND);
@@ -1140,16 +1128,9 @@ public final class PseudocoreCuriosGameTests {
             // Best effort - the placement fallback below covers a partial join.
         }
 
-        // NeoForge validates every custom payload against the connection's
-        // negotiated channels (NetworkRegistry.checkPacket), and our mock
-        // never ran the configuration handshake - so Curios's login-time
-        // sync would be rejected ("Payload may not be sent to the client").
-        // Ad-hoc channels are the connection-local override for exactly this;
-        // they need the channel attached first. The list is every
-        // server->client SPacket id Curios registers (the class-name ->
-        // snake_case convention matches both payloads observed rejecting);
-        // whitelist overshoot is harmless - unsent ids are simply never asked
-        // about.
+        // NeoForge validates every custom payload against the connection's negotiated channels, and
+        // our mock never ran the handshake - so Curios's login sync would be rejected; ad-hoc channels
+        // are the override - the list is every server->client SPacket id it registers (overshoot harmless).
         var curiosChannels = net.neoforged.neoforge.network.registration.ChannelAttributes
                 .getOrCreateAdHocChannels(connection);
         for (var id : new String[]{
@@ -1158,11 +1139,9 @@ public final class PseudocoreCuriosGameTests {
                 "page", "break", "grabbed_item", "quick_move"}) {
             curiosChannels.add(ResourceLocation.fromNamespaceAndPath("curios", id));
         }
-        // ManasCore's login sync is bus-caught (non-fatal) but still prints a
-        // stack trace per payload; whitelisting keeps the test log readable.
-        // Full cross-product of its payload namespaces and sync fragments
-        // (scanned from the nested module jars): wrong pairs are never sent,
-        // right pairs are always covered - no whack-a-mole per run.
+        // ManasCore's login sync is bus-caught (non-fatal) but still prints a stack trace per
+        // payload; whitelisting keeps the test log readable - the full cross-product of its payload
+        // namespaces and sync fragments (scanned from the nested jars) covers every right pair.
         for (var ns : new String[]{"manascore_config", "manascore_storage",
                 "manascore_world_storage", "manascore_registry_storage"}) {
             for (var frag : new String[]{"sync_config_to_client", "sync_chunk_storage",
@@ -1171,10 +1150,9 @@ public final class PseudocoreCuriosGameTests {
             }
         }
         curiosChannels.add(ResourceLocation.fromNamespaceAndPath("neoforge", "advanced_open_screen"));
-        // IaF CE syncs NeoForge attachments to tracking players on every
-        // living tick and does NOT catch a rejected send (#48's environment
-        // discovery): without this id, the first living entity near a mock
-        // player crashes the whole suite the moment Ice and Fire is staged.
+        // IaF CE syncs NeoForge attachments to tracking players on every living tick and does
+        // NOT catch a rejected send (#48's environment discovery): without this id, the first
+        // living entity near a mock player crashes the whole suite once Ice and Fire is staged.
         curiosChannels.add(ResourceLocation.fromNamespaceAndPath("neoforge", "sync_attachments"));
         // Tensura's gamerule pushes (integer and boolean variants) are
         // bus-caught but stack-trace per send; same readability treatment
