@@ -1075,6 +1075,65 @@ public final class PseudocoreCuriosGameTests {
         helper.succeed();
     }
 
+    /**
+     * #60: the clear gesture's destroy wipes the element trait together
+     * with the storage - a cleared core forgets its dragon element and
+     * is back to "never held one" for the branch evolution. The trait
+     * rides GE's API through pseudocore's bridge; the two-step confirm
+     * and the shared cooldown are the destroy test's, unchanged.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void clearDestroyWipesTheElementTrait(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        check(net.neoforged.fml.ModList.get().isLoaded("gearevolution"),
+                "Gear Evolution must be staged for the trait test (#60)");
+        var dragonCore = new ItemStack(BuiltInRegistries.ITEM.getOptional(
+                ResourceLocation.fromNamespaceAndPath("pseudocore", "netherite_dragon_pseudocore"))
+                .orElse(null));
+        check(dragonCore.getItem() != Items.AIR, "the netherite dragon core must exist");
+        org.bitwisemadness.pseudocore.util.GearEvolutionBridge.setSpecialization(dragonCore, "ice");
+        check("ice".equals(org.bitwisemadness.pseudocore.util.GearEvolutionBridge
+                        .getSpecialization(dragonCore)),
+                "the test must start with an element set");
+        // Filled, not just trait-marked: an empty core is a silent no-op
+        // for the clear gesture (#15), so the destroy never runs on it.
+        dragonCore.set(org.bitwisemadness.pseudocore.registry.ModDataComponents.CONTAINED_MOB.get(),
+                new org.bitwisemadness.pseudocore.item.component.ContainedMobComponent(
+                        ResourceLocation.withDefaultNamespace("cow"), java.util.UUID.randomUUID(),
+                        new net.minecraft.nbt.CompoundTag()));
+        player.setItemSlot(EquipmentSlot.MAINHAND, dragonCore);
+
+        var destroy = org.bitwisemadness.pseudocore.curios.hotkey.ClearActionMode.DESTROY;
+        org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, dragonCore, destroy);
+        check("ice".equals(org.bitwisemadness.pseudocore.util.GearEvolutionBridge
+                        .getSpecialization(dragonCore)),
+                "arming the confirm must not wipe the trait yet");
+
+        // The record-only wipe is a clear too (#60): instant and
+        // config-independent, and it forgets the element as well.
+        var recordCore = new ItemStack(dragonCore.getItem());
+        org.bitwisemadness.pseudocore.util.GearEvolutionBridge.setSpecialization(recordCore, "fire");
+        recordCore.set(ModLinkageComponents.DEAD_MOB.get(), new DeadMobComponent(
+                ResourceLocation.withDefaultNamespace("cow"), java.util.UUID.randomUUID(),
+                new net.minecraft.nbt.CompoundTag(), ResourceLocation.withDefaultNamespace("player_attack"),
+                "player", System.currentTimeMillis()));
+        org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, recordCore, destroy);
+        check(!recordCore.has(ModLinkageComponents.DEAD_MOB.get()),
+                "the death record must wipe instantly, config-independent");
+        check(org.bitwisemadness.pseudocore.util.GearEvolutionBridge
+                        .getSpecialization(recordCore).isEmpty(),
+                "the record wipe must clear the element trait too (#60)");
+
+        helper.runAfterDelay(org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction
+                .COOLDOWN_TICKS + 10, () -> {
+            org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, dragonCore, destroy);
+            check(org.bitwisemadness.pseudocore.util.GearEvolutionBridge
+                            .getSpecialization(dragonCore).isEmpty(),
+                    "the destroy must wipe the element trait with the storage (#60)");
+            helper.succeed();
+        });
+    }
+
     /** Drop a stack into the Curios slot through the raw handler write. */
     private static void equipInSlot(ServerPlayer player, ItemStack stack) {
         var inventory = CuriosApi.getCuriosInventory(player).orElse(null);

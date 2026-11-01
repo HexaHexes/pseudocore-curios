@@ -212,6 +212,38 @@ class GearEvolutionChainTest {
         }
     }
 
+    /**
+     * The element-branch evolution (#60): netherite_dragon evolves by the
+     * stored dragon's element - three options with exact targets and
+     * specializations, and still no plain evolution: an unmatched
+     * specialization must BLOCK, never guess a target.
+     */
+    @Test
+    void netheriteDragonBranchesByElement() throws IOException {
+        String json = Files.readString(CHAINS.resolve("netherite_dragon_pseudocore.json"));
+        assertTrue(json.contains("\"evolutionOptions\""),
+                "netherite_dragon must declare evolutionOptions (#60)");
+        assertTrue(!EVO.matcher(json).find(),
+                "the branch file must not declare a plain evolution (#60)");
+        List<String> ids = new ArrayList<>();
+        Matcher idsMatch = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+        while (idsMatch.find()) {
+            ids.add(idsMatch.group(1));
+        }
+        List<String> specs = new ArrayList<>();
+        Matcher specsMatch = Pattern.compile("\"specialization\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+        while (specsMatch.find()) {
+            specs.add(specsMatch.group(1));
+        }
+        assertEquals(List.of(
+                "pseudocore:fire_dragonsteel_pseudocore",
+                "pseudocore:ice_dragonsteel_pseudocore",
+                "pseudocore:lightning_dragonsteel_pseudocore"), ids,
+                "each branch targets its own element's dragonsteel core (#60)");
+        assertEquals(List.of("fire", "ice", "lightning"), specs,
+                "each branch binds to the stored dragon's element (#60)");
+    }
+
     private static Chain readChain(String tier) throws IOException {
         String json = Files.readString(CHAINS.resolve(tier + ".json"));
         String item = find(ITEM, json, tier, "item");
