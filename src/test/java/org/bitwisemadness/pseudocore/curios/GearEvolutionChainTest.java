@@ -81,23 +81,24 @@ class GearEvolutionChainTest {
             {"hihiirokane_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
     };
 
-    /** Dragon tiers on the Tensura jar's main spine (#33): item plus maxEP. */
+    /** Dragon tiers, aligned to the regular pseudocore rungs (#64): item plus maxEP. */
     private static final String[][] DRAGON = {
-            {"copper_dragon_pseudocore", "18000"},
-            {"iron_dragon_pseudocore", "52000"},
-            {"silver_dragon_pseudocore", "225000"},
-            {"gold_dragon_pseudocore", "750000"},
-            {"netherite_dragon_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
+            {"copper_dragon_pseudocore", "5500"},
+            {"iron_dragon_pseudocore", "13500"},
+            {"silver_dragon_pseudocore", "32000"},
+            {"gold_dragon_pseudocore", "78000"},
+            {"netherite_dragon_pseudocore", "175000"},
     };
 
     /**
-     * The dragonsteel tiers (#27): parallel element branches after
-     * netherite_dragon - not a linear ladder, so each one starts at the
-     * IaF dragonsteel armor's own floor instead of a predecessor's
-     * maxEP (the predecessor is uncapped - a ceiling, not a reachable
-     * number), carries the uncapped sentinel, and stays terminal.
+     * The dragonsteel tiers (#27, entry moved by #64): parallel element
+     * branches after netherite_dragon - not a linear ladder, so each one
+     * starts where the ALIGNED netherite_dragon now caps (strict branch
+     * continuity: a successor floor above the predecessor's cap stalls
+     * evolution), carrying the uncapped sentinel and staying terminal.
+     * #27's IaF-armor-floor rationale (750 000) is superseded by #64.
      */
-    private static final long DRAGONSTEEL_ARMOR_FLOOR = 750_000L;
+    public static final long DRAGONSTEEL_ENTRY_FLOOR = 175_000L;
 
     private static final String[][] DRAGONSTEEL = {
             {"fire_dragonsteel_pseudocore", String.valueOf(UNCAPPED_SENTINEL)},
@@ -133,19 +134,20 @@ class GearEvolutionChainTest {
     }
 
     /**
-     * The dragonsteel triple (#27): IaF's armor floor as each row's start,
-     * the uncapped sentinel, terminal (parallel elements chain nowhere),
-     * declared item, numeric gain.
+     * The dragonsteel triple (#27, entry moved by #64): the aligned
+     * netherite_dragon's cap as each row's start (strict branch
+     * continuity), the uncapped sentinel, terminal (parallel elements
+     * chain nowhere), declared item, numeric gain.
      */
     @Test
-    void dragonsteelTiersCarryTheArmorFloorAndStayTerminal() throws IOException {
+    void dragonsteelTiersEnterAtTheBranchFloorAndStayTerminal() throws IOException {
         for (String[] tier : DRAGONSTEEL) {
             Chain chain = readChain(tier[0]);
             String label = "pseudocore:" + tier[0];
             assertEquals(label, chain.item(), tier[0] + " must declare its own item id");
-            assertEquals(DRAGONSTEEL_ARMOR_FLOOR, chain.min(),
-                    label + ": minEP must be the dragonsteel armor's floor (#27) - its "
-                            + "predecessor is uncapped, so prev-max does not apply");
+            assertEquals(DRAGONSTEEL_ENTRY_FLOOR, chain.min(),
+                    label + ": minEP must meet the aligned netherite_dragon's cap (#64) - "
+                            + "a higher floor stalls the branch evolution");
             assertEquals(Long.parseLong(tier[1]), chain.max(),
                     label + ": maxEP must be the uncapped sentinel");
             assertTrue(chain.evolution() == null,
