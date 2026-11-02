@@ -1,7 +1,7 @@
 {
   "item": "pseudocore:silver_dragon_pseudocore",
-  "minEP": 52000,
-  "maxEP": 225000,
+  "minEP": 13500,
+  "maxEP": 32000,
   "epGain": 0.025,
   "evolution": "pseudocore:gold_dragon_pseudocore"
 }
