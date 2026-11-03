@@ -196,6 +196,24 @@ public final class ReleaseRecallAction {
     }
 
     /**
+     * The shared throttle as the ability bar's overlay progress (#69):
+     * 0.0 ready, 1.0 just pressed - read-only, never arms or moves the
+     * window. Core's availability contract renders this exact number, so
+     * the bar can never disagree with the hotkey's own cooldown.
+     */
+    public static float cooldownProgress(ServerPlayer player) {
+        Long last = LAST_USE.get(player.getUUID());
+        if (last == null) {
+            return 0.0F;
+        }
+        long remaining = COOLDOWN_TICKS - (player.level().getGameTime() - last);
+        if (remaining <= 0L) {
+            return 0.0F;
+        }
+        return (float) remaining / (float) COOLDOWN_TICKS;
+    }
+
+    /**
      * Spawn the stored mob at the player's feet - one implementation for
      * the hotkey press, the air click and the clear gesture's `release`
      * mode (#15's shared-helper requirement), applying the base APIs'
