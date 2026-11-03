@@ -35,6 +35,7 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosEvents;
@@ -812,10 +813,20 @@ public final class PseudocoreCuriosGameTests {
      */
     private static ItemStack releasedSlotCore(GameTestHelper helper, ServerPlayer player,
                                                net.minecraft.world.entity.LivingEntity mob) {
+        return releasedSlotCore(helper, player, mob, 0);
+    }
+
+    /**
+     * Same, into a chosen slot (#71): the press resolves the active
+     * stack, so slot 6 also exercises the read-time fallback.
+     */
+    private static ItemStack releasedSlotCore(GameTestHelper helper, ServerPlayer player,
+                                               net.minecraft.world.entity.LivingEntity mob,
+                                               int slot) {
         ItemStack stack = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         check(PseudocoreItem.tryCapture(player, mob, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
-        equipInSlot(player, stack);
+        equipInSlot(player, slot, stack);
         check(ReleaseRecallAction.handle(player) == null,
                 "the first press must release");
         check(stack.get(ModLinkageComponents.LINKAGE.get()) != null,
@@ -1202,19 +1213,182 @@ public final class PseudocoreCuriosGameTests {
         helper.succeed();
     }
 
+    /**
+     * Read-time resolution (#71): the stored index is never rewritten by
+     * looking at it - clamped to the live slots, fallen back to the first
+     * non-empty, -1 only when every slot is empty.
+     */
+    @GameTest(template = "empty")
+    public static void activeCoreReclampsToTheFirstNonEmpty(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        equipInSlot(player, 0, core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get()));
+        equipInSlot(player, 3, core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get()));
+        equipInSlot(player, 5, core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get()));
+
+        ModAttachments.setActiveCoreIndex(player, 99);
+        check(ActiveCore.resolveIndex(player) == 5,
+                "an out-of-range index must clamp to the last live slot, got "
+                        + ActiveCore.resolveIndex(player));
+
+        ModAttachments.setActiveCoreIndex(player, 3);
+        check(ActiveCore.resolveIndex(player) == 3,
+                "an index on a filled slot must resolve to it, got "
+                        + ActiveCore.resolveIndex(player));
+
+        // Removing the active core moves the resolution, never the selection.
+        equipInSlot(player, 3, ItemStack.EMPTY);
+        check(ModAttachments.activeCoreIndex(player) == 3,
+                "resolution must not rewrite the stored selection (#71)");
+        check(ActiveCore.resolveIndex(player) == 0,
+                "removing the active core must fall back to the first non-empty, got "
+                        + ActiveCore.resolveIndex(player));
+
+        equipInSlot(player, 0, ItemStack.EMPTY);
+        equipInSlot(player, 5, ItemStack.EMPTY);
+        check(ActiveCore.resolveIndex(player) == -1,
+                "six empty slots must resolve to -1");
+        check(ActiveCore.resolveStack(player).isEmpty(),
+                "six empty slots must resolve to EMPTY");
+
+        helper.succeed();
+    }
+
+    /**
+     * The press acts on the resolved active stack (#71): two cores hold
+     * two mobs, the selection points at the second, and only that one
+     * releases - the strip's frame and the verb read the same state.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void pressActsOnTheActiveCore(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var firstCow = helper.spawn(EntityType.COW, 1, 1, 1);
+        var secondCow = helper.spawn(EntityType.COW, 2, 1, 2);
+        ItemStack slotZero = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack slotOne = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        check(PseudocoreItem.tryCapture(player, firstCow, slotZero) == InteractionResult.SUCCESS,
+                "the first capture must succeed");
+        check(PseudocoreItem.tryCapture(player, secondCow, slotOne) == InteractionResult.SUCCESS,
+                "the second capture must succeed");
+        equipInSlot(player, 0, slotZero);
+        equipInSlot(player, 1, slotOne);
+        ModAttachments.setActiveCoreIndex(player, 1);
+
+        check(ReleaseRecallAction.handle(player) == null,
+                "pressing the active stack must release");
+        check(!slotStack(player, 1).has(ModDataComponents.CONTAINED_MOB.get()),
+                "the active core must have released its mob");
+        check(slotStack(player, 1).get(ModLinkageComponents.LINKAGE.get()) != null,
+                "release must stamp the active core");
+        check(slotStack(player, 0).has(ModDataComponents.CONTAINED_MOB.get()),
+                "the inactive core must keep its mob");
+
+        var linkage = slotStack(player, 1).get(ModLinkageComponents.LINKAGE.get());
+        var roaming = helper.getLevel().getEntitiesOfClass(Cow.class,
+                new AABB(player.position(), player.position()).inflate(16.0D));
+        check(roaming.stream().anyMatch(cow -> linkage.equals(LinkageManager.taggedLinkage(cow))),
+                "the roaming mob must be the active core's, got " + roaming.size() + " cow(s)");
+
+        helper.succeed();
+    }
+
+    /**
+     * The death search is position-independent (#71): the linkage core
+     * sits in the sixth slot and still receives the record - a six-slot
+     * search, not a slot-0 assumption.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void deathPreserveFindsTheSixthSlotCore(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack stack = releasedSlotCore(helper, player, cow, 5);
+        UUID mob = stampedMob(helper, player, stack);
+        makePreserving(helper, stack);
+
+        helper.getLevel().getEntity(mob)
+                .hurt(player.damageSources().playerAttack(player), 20.0F);
+
+        check(helper.getLevel().getEntity(mob) == null,
+                "the tracked mob must leave the world - captured, not merely dead");
+        DeadMobComponent dead = slotStack(player, 5).get(ModLinkageComponents.DEAD_MOB.get());
+        check(dead != null,
+                "the death search must find the linkage core in slot 6 of 6 (#71)");
+        check(dead.entityUuid().toString().equals(mob.toString()),
+                "the record must name the tracked mob, got " + dead.entityUuid() + " vs " + mob);
+        check(slotStack(player, 0).isEmpty(),
+                "no earlier slot may receive the record (#71)");
+
+        helper.succeed();
+    }
+
+    /**
+     * The active index survives a re-join (#71): the full save -&gt; load
+     * round trip through Entity's attachment NBT - the exact path
+     * {@code placeNewPlayer} runs with a player's data file - so the
+     * selection stored before logging off is the selection on return.
+     */
+    /**
+     * The active index survives a re-join (#71): the round trip through
+     * Entity's attachment NBT using the exact pair {@code PlayerDataStorage}
+     * runs for the player's data file - {@code saveWithoutId} on save
+     * ({@code Entity.save} gates on {@code canSerialize}, and players are
+     * {@code noSave}) and {@code Entity.load} on join - so the selection
+     * stored before logging off is the selection on return.
+     */
+    @GameTest(template = "empty")
+    public static void activeCoreIndexPersistsAcrossRejoin(GameTestHelper helper) {
+        var player = mockPlayer(helper);
+        ModAttachments.setActiveCoreIndex(player, 3);
+
+        var saved = new net.minecraft.nbt.CompoundTag();
+        player.saveWithoutId(saved);
+        var attachmentsRoot =
+                net.neoforged.neoforge.attachment.AttachmentHolder.ATTACHMENTS_NBT_KEY;
+        check(saved.contains(attachmentsRoot),
+                "the save must carry the attachments root");
+        check(saved.getCompound(attachmentsRoot).contains(
+                        ModAttachments.ACTIVE_CORE_INDEX.getKey().location().toString()),
+                "the save must carry the active index, got "
+                        + saved.getCompound(attachmentsRoot).getAllKeys());
+
+        var rejoined = mockPlayer(helper);
+        check(ModAttachments.activeCoreIndex(rejoined) == 0,
+                "a fresh join must start at the default index");
+        rejoined.load(saved);
+        check(ModAttachments.activeCoreIndex(rejoined) == 3,
+                "the saved index must come back on re-join, got "
+                        + ModAttachments.activeCoreIndex(rejoined));
+
+        helper.succeed();
+    }
+
     /** Drop a stack into the Curios slot through the raw handler write. */
     private static void equipInSlot(ServerPlayer player, ItemStack stack) {
+        equipInSlot(player, 0, stack);
+    }
+
+    /** Drop a stack into one of the six Curios slots (#71). */
+    private static void equipInSlot(ServerPlayer player, int slot, ItemStack stack) {
         var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
         check(inventory != null, "the joined player must have a Curios inventory (#7)");
         inventory.getCurios().get(PseudocoreCurios.SLOT_ID)
-                .getStacks().setStackInSlot(0, stack);
+                .getStacks().setStackInSlot(slot, stack);
     }
 
     /** The stack currently in the Curios slot. */
     private static ItemStack slotStack(ServerPlayer player) {
+        return slotStack(player, 0);
+    }
+
+    /** The stack currently in one of the six Curios slots (#71). */
+    private static ItemStack slotStack(ServerPlayer player, int slot) {
         return CuriosApi.getCuriosInventory(player).orElseThrow()
                 .getCurios().get(PseudocoreCurios.SLOT_ID)
-                .getStacks().getStackInSlot(0);
+                .getStacks().getStackInSlot(slot);
     }
 
     /**

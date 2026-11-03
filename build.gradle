@@ -219,7 +219,7 @@ tasks.register('prepareGametestMods', Sync) {
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
     dependsOn 'prepareGametestMods'
 
-    def expectedTests = 27
+    def expectedTests = 31
     doLast {
         def log = file('run/logs/latest.log')
         if (!log.exists()) {

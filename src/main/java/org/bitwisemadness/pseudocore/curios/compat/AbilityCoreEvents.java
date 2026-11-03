@@ -27,14 +27,14 @@ public final class AbilityCoreEvents {
     @SubscribeEvent
     public static void onRegisterAbilityRegistry(RegisterEvent event) {
         if (AbilityCoreBridge.isLoaded()) {
-            AbilityCoreBridge.registerDefinition(event);
+            AbilityCoreBridge.registerDefinitions(event);
         }
     }
 
     @SubscribeEvent
     public static void onCommonSetup(FMLCommonSetupEvent event) {
         if (AbilityCoreBridge.isLoaded()) {
-            AbilityCoreBridge.registerPress();
+            AbilityCoreBridge.registerHandlers();
         }
     }
 }

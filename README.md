@@ -1,21 +1,25 @@
 # Pseudocore Curios
 
 The companion addon to [Pseudocore](https://github.com/HexaHexes/pseudocore).
-Keep a core on your belt through Curios, press a key to release its stored mob at
-your position, and press it again to recall that mob through the normal capture
-gates. The addon also carries the Pseudocore ecosystem's Tensura-side data
-(Gear Evolution chains covering every core tier), so Tensura and Gear Evolution
-integration lives here rather than in base Pseudocore, mirroring how the wallet
-chains ship in lightmans-tensura rather than in Lightman's Currency.
+Keep up to six cores on your belt through Curios, press a key to release the
+active core's stored mob at your position, and press it again to recall that
+mob through the normal capture gates. The addon also carries the Pseudocore
+ecosystem's Tensura-side data (Gear Evolution chains covering every core
+tier), so Tensura and Gear Evolution integration lives here rather than in
+base Pseudocore, mirroring how the wallet chains ship in lightmans-tensura
+rather than in Lightman's Currency.
 
 ## What it does
 
-- A Curios slot that accepts Pseudocore cores (beast and dragon lines).
-- A rebindable hotkey (default the `` ` `` key) that releases the core's stored
-  mob at the player's position, and recalls it again. Recall reuses Pseudocore's
-  capture paths, so every gate (ownership, tier limits, blacklist) re-applies.
-  Right-clicking air with a core in hand does the same press; sneak-right-click
-  clears it (`release` by default, a confirmed `destroy` on request).
+- Six Curios slots holding a party of cores (beast and dragon lines), with a
+  selector strip above the hotbar framing the active one - the core the
+  addon's own hotkey releases and recalls.
+- A rebindable hotkey (default the `` ` `` key) that releases the active
+  core's stored mob at the player's position, and recalls it again. Recall
+  reuses Pseudocore's capture paths, so every gate (ownership, tier limits,
+  blacklist) re-applies. Right-clicking air with a core in hand does the same
+  press; sneak-right-click clears it (`release` by default, a confirmed
+  `destroy` on request).
 - Death-preserve (needs the `preservation` enchantment on the core): a tracked
   mob about to die to a configured damage source is saved into the core that
   released it instead - searched slot -> inventory -> corpse, capture gates
