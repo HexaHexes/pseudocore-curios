@@ -117,6 +117,16 @@ repositories {
             password = System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')
         }
     }
+    // Ability core resolves from its own GitHub Packages maven (#69): the
+    // press ability is optional, but compiling against it needs the jar.
+    maven {
+        name = 'GitHubPackagesAbilityCore'
+        url = uri('https://maven.pkg.github.com/HexaHexes/ability-core')
+        credentials {
+            username = System.getenv('GITHUB_ACTOR') ?: project.findProperty('gpr.user')
+            password = System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')
+        }
+    }
     mavenCentral()
 }
 
@@ -130,6 +140,10 @@ dependencies {
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
+    // Ability core: optional. The press ability (#69) registers through its
+    // contracts; the addon works fully without it (the hotkey path). Same
+    // GitHub Packages read as pseudocore.
+    compileOnly "org.bitwisemadness.abilitycore:ability_core:${ability_core_version}"
     // The slot this mod adds. Never bundled.
     compileOnly "curse.maven:curios-309927:${curios_file_id}"
     // Gear Evolution and Tensura, for the retention suite that drives GE's
@@ -154,6 +168,7 @@ dependencies {
     // closure mirrors tensura-tool-belt's, so the retention suite runs against
     // the pack's real evolution stack.
     gametestMods "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
+    gametestMods "org.bitwisemadness.abilitycore:ability_core:${ability_core_version}"
     gametestMods "curse.maven:curios-309927:${curios_file_id}"
     gametestMods "curse.maven:gearevolution-1501711:${gearevolution_file_id}"
     gametestMods "curse.maven:architectury-419699:${architectury_file_id}"
@@ -204,7 +219,7 @@ tasks.register('prepareGametestMods', Sync) {
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
     dependsOn 'prepareGametestMods'
 
-    def expectedTests = 26
+    def expectedTests = 27
     doLast {
         def log = file('run/logs/latest.log')
         if (!log.exists()) {

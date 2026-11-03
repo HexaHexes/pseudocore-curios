@@ -29,6 +29,7 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -1125,6 +1126,80 @@ public final class PseudocoreCuriosGameTests {
                     "the destroy must wipe the element trait with the storage (#60)");
             helper.succeed();
         });
+    }
+
+    /**
+     * The press ability (#69): registered against core's registry, its
+     * handler routes the curios slot press through the native pipeline,
+     * and its availability projects this addon's own shared throttle -
+     * so the bar's overlay, the bar's activation and the hotkey are one
+     * verb with one window.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void pressAbilityRoutesThroughTheNativePipeline(GameTestHelper helper) {
+        check(ModList.get().isLoaded("ability_core"),
+                "ability-core must be staged for the ability test (#69)");
+
+        // The definition exists with its metadata.
+        var definition = org.bitwisemadness.abilitycore.discovery.AbilityDiscovery
+                .get(org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID);
+        check(definition.isPresent(), "the press ability must be registered");
+        check(definition.get().activationType()
+                        == org.bitwisemadness.abilitycore.api.ActivationType.INSTANT,
+                "the press must be an instant ability");
+
+        var player = mockPlayer(helper);
+
+        // Empty slot -> core's UNAVAILABLE vocabulary (the native path's answer).
+        var empty = org.bitwisemadness.abilitycore.AbilityCore.HANDLERS.get(
+                        org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID)
+                .orElseThrow()
+                .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(
+                                org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID,
+                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT),
+                        player);
+        check(empty.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_UNAVAILABLE,
+                "an empty slot must refuse UNAVAILABLE through core's vocabulary, got " + empty.outcome());
+
+        // A filled slot releases: ACTED - the same press the hotkey runs.
+        var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        ItemStack hand = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
+                "capture must succeed so there is a mob to release");
+        equipInSlot(player, hand);
+        var acted = org.bitwisemadness.abilitycore.AbilityCore.HANDLERS.get(
+                        org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID)
+                .orElseThrow()
+                .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(
+                                org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID,
+                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT),
+                        player);
+        check(acted.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.ACTED,
+                "a filled core must release through the ability, got " + acted.outcome());
+
+        // The shared throttle, read through core's vocabulary: a second
+        // press is refused as COOLDOWN - one window for bar and hotkey.
+        var cooled = org.bitwisemadness.abilitycore.AbilityCore.HANDLERS.get(
+                        org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID)
+                .orElseThrow()
+                .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(
+                                org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID,
+                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT),
+                        player);
+        check(cooled.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_COOLDOWN,
+                "the second press must be refused as COOLDOWN, got " + cooled.outcome());
+
+        // The overlay projection: a known cooldown metric and a verdict.
+        var overlay = org.bitwisemadness.abilitycore.api.AvailabilityProviders.availabilityFor(
+                player, org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID);
+        check(overlay.isPresent(), "the availability provider must be declared");
+        check(overlay.get().cooldown().isKnown()
+                        && overlay.get().cooldown().knownValue().orElse(0.0) > 0.0,
+                "the overlay must project the shared throttle as a known metric");
+        check(overlay.get().isAvailable(),
+                "a slot holding a core must project as available");
+
+        helper.succeed();
     }
 
     /** Drop a stack into the Curios slot through the raw handler write. */

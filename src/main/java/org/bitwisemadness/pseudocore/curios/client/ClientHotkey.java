@@ -48,6 +48,12 @@ public final class ClientHotkey {
 
     private static void onRegisterKeyMappings(
             net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {
+        if (net.neoforged.fml.ModList.get().isLoaded("ability_hotbar")) {
+            // The bar owns activation when installed (#69): no keybind, no
+            // Controls entry, no key event. The air click and clear gesture
+            // are player actions, not the hotkey, and stay.
+            return;
+        }
         releaseRecall = new KeyMapping(
                 "key.pseudocore_curios.release_recall",
                 DEFAULT_KEYSYM,
