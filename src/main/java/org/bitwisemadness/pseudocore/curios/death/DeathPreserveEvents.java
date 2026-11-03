@@ -21,6 +21,7 @@ import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
+import org.bitwisemadness.pseudocore.registry.ModEnchantments;
 import org.bitwisemadness.pseudocore.util.IafHornAccess;
 
 /**
@@ -69,9 +70,6 @@ public final class DeathPreserveEvents {
 
     @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent.Pre event) {
-        if (!PseudocoreCuriosConfig.deathSaveEnabled()) {
-            return;
-        }
         LivingEntity mob = event.getEntity();
         if (mob.getHealth() - event.getNewDamage() > 0.0F) {
             return; // not lethal - ordinary damage, untouched
@@ -107,6 +105,15 @@ public final class DeathPreserveEvents {
         ItemStack core = findPreservableCore(player, level, owner, linkage);
         if (core == null) {
             // Not found -> normal death + the issue's actionbar line.
+            announceFell(player, record, damageType);
+            return;
+        }
+
+        // The preservation enchantment (#67): a core without it never
+        // preserves - the same observable as the retired deathSave.enabled
+        // switch: the mob dies normally and the fell line goes out.
+        if (ModEnchantments.levelOf(level.registryAccess(), core,
+                ModEnchantments.PRESERVATION) < 1) {
             announceFell(player, record, damageType);
             return;
         }

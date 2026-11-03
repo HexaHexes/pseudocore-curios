@@ -6,6 +6,7 @@ import dev.gearevo.gearevolution.reconcile.ReconciliationMode;
 import java.util.UUID;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -21,6 +22,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -44,6 +46,7 @@ import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
+import org.bitwisemadness.pseudocore.registry.ModEnchantments;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
@@ -88,7 +91,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to lose");
         ContainedMobComponent before = stack.get(ModDataComponents.CONTAINED_MOB.get());
@@ -159,7 +162,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed for a release to track");
         Vec3 pos = Vec3.atBottomCenterOf(cow.blockPosition()).add(0.0, 1.0, 0.0);
@@ -196,7 +199,7 @@ public final class PseudocoreCuriosGameTests {
         var copper = BuiltInRegistries.ITEM
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed for a release to track");
         Vec3 pos = Vec3.atBottomCenterOf(cow.blockPosition()).add(0.0, 1.0, 0.0);
@@ -229,7 +232,7 @@ public final class PseudocoreCuriosGameTests {
         var copper = BuiltInRegistries.ITEM
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed for a release to track");
         Vec3 pos = Vec3.atBottomCenterOf(cow.blockPosition()).add(0.0, 1.0, 0.0);
@@ -282,7 +285,7 @@ public final class PseudocoreCuriosGameTests {
         // validity inputs - false/false is a plain visible-slot context.
         var slotContext = new SlotContext("pseudocore", player, 0, false, false);
         var helper2 = CuriosApi.getCuriosHelper();
-        check(helper2.isStackValid(slotContext, new ItemStack(copper)),
+        check(helper2.isStackValid(slotContext, core(helper, copper)),
                 "the slot must accept a core - the curios:tag validator must see it in curios:pseudocore (#7)");
         check(!helper2.isStackValid(slotContext, new ItemStack(Items.STICK)),
                 "the slot must reject a non-core (#7)");
@@ -344,7 +347,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a filled core to release");
 
@@ -387,7 +390,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, stack);
@@ -435,7 +438,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, stack);
@@ -496,7 +499,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack coreA = new ItemStack(copper);
+        ItemStack coreA = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, coreA) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, coreA);
@@ -507,7 +510,7 @@ public final class PseudocoreCuriosGameTests {
         LinkageRecord recordA = LinkageManager.find(player, linkageA);
         check(recordA != null, "core A's release must record its mob");
 
-        ItemStack coreB = new ItemStack(copper);
+        ItemStack coreB = core(helper, copper);
         check(coreB.get(ModLinkageComponents.LINKAGE.get()) == null,
                 "a fresh core carries no stamp");
         helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
@@ -541,7 +544,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, wolf, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, stack);
@@ -588,13 +591,13 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack hand = new ItemStack(copper);
+        ItemStack hand = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         player.setItemSlot(EquipmentSlot.MAINHAND, hand);
         // A second, empty core in the Curios slot: the air press must never
         // touch it - that independence is the whole report (#34).
-        equipInSlot(player, new ItemStack(copper));
+        equipInSlot(player, core(helper, copper));
 
         var first = new net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
                 .RightClickItem(player, InteractionHand.MAIN_HAND);
@@ -644,11 +647,11 @@ public final class PseudocoreCuriosGameTests {
      * flip windows cannot interleave).
      */
     @GameTest(template = "empty", timeoutTicks = 300)
-    public static void deathSaveOffByDefaultLeavesTheKillAlone(GameTestHelper helper) {
+    public static void deathSaveWithoutTheEnchantmentLeavesTheKillAlone(GameTestHelper helper) {
         var player = mockPlayer(helper);
-        check(!PseudocoreCuriosConfig.deathSaveEnabled(),
-                "deathSave must default to off (#14)");
         var cow = helper.spawn(EntityType.COW, 1, 1, 1);
+        // releasedSlotCore carries only wild_capture - no preservation - so
+        // this probe is exactly the "core without the enchantment" case (#67).
         ItemStack stack = releasedSlotCore(helper, player, cow);
         UUID mob = stampedMob(helper, player, stack);
 
@@ -661,10 +664,10 @@ public final class PseudocoreCuriosGameTests {
         // which is why the preserve tests may assert absence).
         check(doomed instanceof net.minecraft.world.entity.LivingEntity living
                         && living.isDeadOrDying(),
-                "with the feature off the cow must simply die");
+                "without the enchantment the cow must simply die");
         check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null
                         && !slotStack(player).has(ModDataComponents.CONTAINED_MOB.get()),
-                "with the feature off nothing may be written into the core");
+                "without the enchantment nothing may be written into the core");
 
         helper.succeed();
     }
@@ -680,28 +683,24 @@ public final class PseudocoreCuriosGameTests {
         var player = mockPlayer(helper);
         var cow = helper.spawn(EntityType.COW, 1, 1, 1);
         ItemStack stack = releasedSlotCore(helper, player, cow);
+        makePreserving(helper, stack);
         UUID mob = stampedMob(helper, player, stack);
 
-        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
-        try {
-            helper.getLevel().getEntity(mob)
-                    .hurt(player.damageSources().playerAttack(player), 20.0F);
+        helper.getLevel().getEntity(mob)
+                .hurt(player.damageSources().playerAttack(player), 20.0F);
 
-            check(helper.getLevel().getEntity(mob) == null,
-                    "the tracked mob must leave the world - captured, not merely dead");
-            DeadMobComponent dead = slotStack(player).get(ModLinkageComponents.DEAD_MOB.get());
-            check(dead != null,
-                    "the slot core must carry the death record (#14)");
-            check(dead.entityUuid().toString().equals(mob.toString()),
-                    "the record must name the tracked mob, got " + dead.entityUuid()
-                            + " vs " + mob);
-            check(!slotStack(player).has(ModDataComponents.CONTAINED_MOB.get()),
-                    "the live half must be stripped - base sees an empty core");
-            check(dead.damageType().toString().equals("minecraft:player_attack"),
-                    "the whitelisted source must be recorded, got " + dead.damageType());
-        } finally {
-            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
-        }
+        check(helper.getLevel().getEntity(mob) == null,
+                "the tracked mob must leave the world - captured, not merely dead");
+        DeadMobComponent dead = slotStack(player).get(ModLinkageComponents.DEAD_MOB.get());
+        check(dead != null,
+                "the slot core must carry the death record (#14)");
+        check(dead.entityUuid().toString().equals(mob.toString()),
+                "the record must name the tracked mob, got " + dead.entityUuid()
+                        + " vs " + mob);
+        check(!slotStack(player).has(ModDataComponents.CONTAINED_MOB.get()),
+                "the live half must be stripped - base sees an empty core");
+        check(dead.damageType().toString().equals("minecraft:player_attack"),
+                "the whitelisted source must be recorded, got " + dead.damageType());
 
         helper.runAfterDelay(ReleaseRecallAction.COOLDOWN_TICKS + 10, () -> {
             var refusal = ReleaseRecallAction.handle(player);
@@ -718,23 +717,19 @@ public final class PseudocoreCuriosGameTests {
         var player = mockPlayer(helper);
         var cow = helper.spawn(EntityType.COW, 1, 1, 1);
         ItemStack stack = releasedSlotCore(helper, player, cow);
+        makePreserving(helper, stack);
         UUID mob = stampedMob(helper, player, stack);
 
-        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
-        try {
-            var doomed = helper.getLevel().getEntity(mob);
-            check(doomed != null, "the released cow must exist before the hit");
-            // cactus is a real, non-whitelisted type - the whitelist, not
-            // the master switch, is what this pins.
-            doomed.hurt(helper.getLevel().damageSources().cactus(), 20.0F);
-            check(doomed instanceof net.minecraft.world.entity.LivingEntity living
-                            && living.isDeadOrDying(),
-                    "a non-whitelisted source must kill normally even when enabled");
-            check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null,
-                    "a non-whitelisted source must never write the death record");
-        } finally {
-            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
-        }
+        var doomed = helper.getLevel().getEntity(mob);
+        check(doomed != null, "the released cow must exist before the hit");
+        // cactus is a real, non-whitelisted type - the whitelist, not the
+        // enchantment, is what this pins.
+        doomed.hurt(helper.getLevel().damageSources().cactus(), 20.0F);
+        check(doomed instanceof net.minecraft.world.entity.LivingEntity living
+                        && living.isDeadOrDying(),
+                "a non-whitelisted source must kill normally even with the enchantment");
+        check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null,
+                "a non-whitelisted source must never write the death record");
 
         helper.succeed();
     }
@@ -754,12 +749,15 @@ public final class PseudocoreCuriosGameTests {
         UUID linkage = rightCore.get(ModLinkageComponents.LINKAGE.get());
 
         // Move the released core into the inventory, park a stranger in the slot.
-        ItemStack inSlot = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack inSlot = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         equipInSlot(player, inSlot);
+        // Enchant BEFORE the inventory takes it: 1.21.1's Inventory.add
+        // places a component-copy (copyWithCount + grow), so the enchantment
+        // must be on the stack first to ride into the slot (#67).
+        makePreserving(helper, rightCore);
         check(player.getInventory().add(rightCore),
                 "the released core must fit into the main inventory");
 
-        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
         PseudocoreCuriosConfig.COMMON.deathSaveAllowNonSlotCores.set(true);
         try {
             helper.getLevel().getEntity(mob)
@@ -778,7 +776,6 @@ public final class PseudocoreCuriosGameTests {
                             && !inSlot.has(ModDataComponents.CONTAINED_MOB.get()),
                     "a different core in the slot must stay untouched (#14)");
         } finally {
-            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
             PseudocoreCuriosConfig.COMMON.deathSaveAllowNonSlotCores.set(false);
         }
 
@@ -796,17 +793,13 @@ public final class PseudocoreCuriosGameTests {
         check(tracked instanceof TamableAnimal, "a wolf is tamable");
         ((TamableAnimal) tracked).setOwnerUUID(java.util.UUID.randomUUID());
 
-        PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(true);
-        try {
-            tracked.hurt(player.damageSources().playerAttack(player), 20.0F);
-            check(tracked instanceof net.minecraft.world.entity.LivingEntity living
-                            && living.isDeadOrDying(),
-                    "the gate refuses the capture, so the wolf dies normally");
-            check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null,
-                    "a refused capture must write nothing");
-        } finally {
-            PseudocoreCuriosConfig.COMMON.deathSaveEnabled.set(false);
-        }
+        makePreserving(helper, stack);
+        tracked.hurt(player.damageSources().playerAttack(player), 20.0F);
+        check(tracked instanceof net.minecraft.world.entity.LivingEntity living
+                        && living.isDeadOrDying(),
+                "the gate refuses the capture, so the wolf dies normally");
+        check(slotStack(player).get(ModLinkageComponents.DEAD_MOB.get()) == null,
+                "a refused capture must write nothing");
 
         helper.succeed();
     }
@@ -818,7 +811,7 @@ public final class PseudocoreCuriosGameTests {
      */
     private static ItemStack releasedSlotCore(GameTestHelper helper, ServerPlayer player,
                                                net.minecraft.world.entity.LivingEntity mob) {
-        ItemStack stack = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack stack = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         check(PseudocoreItem.tryCapture(player, mob, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, stack);
@@ -849,7 +842,7 @@ public final class PseudocoreCuriosGameTests {
     public static void clearDefaultsToReleaseAndEmptiesTheCore(GameTestHelper helper) {
         var player = mockPlayer(helper);
         var cow = helper.spawn(EntityType.COW, 1, 1, 1);
-        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack hand = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a filled core to clear");
         player.setItemSlot(EquipmentSlot.MAINHAND, hand);
@@ -879,7 +872,7 @@ public final class PseudocoreCuriosGameTests {
     public static void clearDestroyNeedsTheConfirmStep(GameTestHelper helper) {
         var player = mockPlayer(helper);
         var cow = helper.spawn(EntityType.COW, 1, 1, 1);
-        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack hand = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         check(PseudocoreItem.tryCapture(player, cow, hand) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a filled core to destroy");
         player.setItemSlot(EquipmentSlot.MAINHAND, hand);
@@ -913,7 +906,7 @@ public final class PseudocoreCuriosGameTests {
     @GameTest(template = "empty", timeoutTicks = 300)
     public static void clearWipesDeathDataInstantly(GameTestHelper helper) {
         var player = mockPlayer(helper);
-        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack hand = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         hand.set(ModLinkageComponents.DEAD_MOB.get(),
                 new org.bitwisemadness.pseudocore.curios.death.DeadMobComponent(
                         ResourceLocation.withDefaultNamespace("cow"),
@@ -942,7 +935,7 @@ public final class PseudocoreCuriosGameTests {
     @GameTest(template = "empty", timeoutTicks = 300)
     public static void clearOnEmptyIsSilentAndFree(GameTestHelper helper) {
         var player = mockPlayer(helper);
-        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack hand = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         player.setItemSlot(EquipmentSlot.MAINHAND, hand);
 
         org.bitwisemadness.pseudocore.curios.hotkey.ClearCoreAction.handle(player, hand);
@@ -974,7 +967,7 @@ public final class PseudocoreCuriosGameTests {
                 .getOptional(ResourceLocation.fromNamespaceAndPath("pseudocore", "copper_pseudocore"))
                 .orElse(null);
         check(copper != null, "the copper core must exist");
-        ItemStack stack = new ItemStack(copper);
+        ItemStack stack = core(helper, copper);
         check(PseudocoreItem.tryCapture(player, cow, stack) == InteractionResult.SUCCESS,
                 "capture must succeed so there is a mob to release");
         equipInSlot(player, stack);
@@ -1060,7 +1053,7 @@ public final class PseudocoreCuriosGameTests {
     @GameTest(template = "empty", timeoutTicks = 300)
     public static void offhandCorePressesThroughTheAirListener(GameTestHelper helper) {
         var player = mockPlayer(helper);
-        ItemStack hand = new ItemStack(org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack hand = core(helper, org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
         player.setItemSlot(EquipmentSlot.OFFHAND, hand);
 
         var event = new PlayerInteractEvent.RightClickItem(player, InteractionHand.OFF_HAND);
@@ -1161,15 +1154,31 @@ public final class PseudocoreCuriosGameTests {
      * sends its packets over a channel-less connection, where they are
      * dropped rather than rejected.
      */
+    /**
+     * A core carrying {@code wild_capture} (#159's universal gate): every
+     * probe in this suite captures untamed mobs, so every probe core opens
+     * the wild axis. The enchantment is inert for the refusals these tests
+     * actually pin (anti-theft, already-full, gates) - it only ever opens
+     * wild.
+     */
+    private static ItemStack core(GameTestHelper helper, Item item) {
+        ItemStack stack = new ItemStack(item);
+        var holder = helper.getLevel().registryAccess()
+                .lookupOrThrow(Registries.ENCHANTMENT)
+                .getOrThrow(ModEnchantments.WILD_CAPTURE);
+        stack.enchant(holder, 1);
+        return stack;
+    }
+
+    /** Add the preservation enchantment to a probe core (#67). */
+    private static void makePreserving(GameTestHelper helper, ItemStack stack) {
+        stack.enchant(helper.getLevel().registryAccess()
+                .lookupOrThrow(Registries.ENCHANTMENT)
+                .getOrThrow(ModEnchantments.PRESERVATION), 1);
+    }
+
     private static ServerPlayer mockPlayer(GameTestHelper helper) {
         PseudocoreCurios.LOGGER.info("retention stage: mockPlayer building");
-        // pseudocore alpha.7+ defaults tamedMobsOnly ON for copper..netherite (#111), refusing
-        // every untamed probe mob in this suite. One idempotent suite-wide pin-off - never restored:
-        // a flip-flop across parallel tests would race. The gate has its own test; capture must work.
-        org.bitwisemadness.pseudocore.config.PseudocoreConfig.COMMON
-                .tier("copper").ifPresent(s -> s.tamedMobsOnly.set(false));
-        org.bitwisemadness.pseudocore.config.PseudocoreConfig.COMMON
-                .tier("iron").ifPresent(s -> s.tamedMobsOnly.set(false));
         var server = helper.getLevel().getServer();
         var profile = new GameProfile(java.util.UUID.randomUUID(), "PseudocoreRetention");
         var player = new ServerPlayer(server, helper.getLevel(), profile,
@@ -1239,6 +1248,10 @@ public final class PseudocoreCuriosGameTests {
             throw new GameTestAssertException(
                     "placeNewPlayer failed before the player was placed: " + joinNoise);
         }
+        // The #159 economy charges captures from the player's pools; suite-wide
+        // huge pools keep the cost out of these tests' way (one-way pin, never
+        // restored - the same rule the retired tamedMobsOnly pin followed).
+        org.bitwisemadness.pseudocore.util.TensuraBridge.writePools(player, 1.0E9D, 1.0E9D);
         return player;
     }
 

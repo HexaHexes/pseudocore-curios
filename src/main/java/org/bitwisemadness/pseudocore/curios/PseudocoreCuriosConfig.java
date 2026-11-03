@@ -36,15 +36,6 @@ public final class PseudocoreCuriosConfig {
         container.registerConfig(ModConfig.Type.SERVER, COMMON_SPEC);
     }
 
-    /** Whether a configured source may ever preserve instead of kill. */
-    public static boolean deathSaveEnabled() {
-        try {
-            return COMMON.deathSaveEnabled.get();
-        } catch (RuntimeException notLoadedYet) {
-            return false;
-        }
-    }
-
     /** The damage types that trigger preservation; empty = save from nothing. */
     public static boolean damageSourceAllowed(String typeId) {
         try {
@@ -87,7 +78,6 @@ public final class PseudocoreCuriosConfig {
     }
 
     public static final class Common {
-        public final ModConfigSpec.BooleanValue deathSaveEnabled;
         public final ModConfigSpec.ConfigValue<List<? extends String>> deathSaveDamageSources;
         public final ModConfigSpec.BooleanValue deathSaveAllowNonSlotCores;
         public final ModConfigSpec.BooleanValue deathSaveSearchCorpses;
@@ -95,12 +85,6 @@ public final class PseudocoreCuriosConfig {
 
         public Common(ModConfigSpec.Builder builder) {
             builder.push("deathSave");
-            deathSaveEnabled = builder
-                    .comment(
-                            "Master switch: may a tracked mob about to die from a whitelisted",
-                            "source be preserved into the core that released it instead of",
-                            "dying? Off (default): deaths are always deaths.")
-                    .define("enabled", false);
             deathSaveDamageSources = builder
                     .comment(
                             "The damage types that may trigger preservation, as registry ids.",

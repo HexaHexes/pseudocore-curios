@@ -16,9 +16,10 @@ chains ship in lightmans-tensura rather than in Lightman's Currency.
   capture paths, so every gate (ownership, tier limits, blacklist) re-applies.
   Right-clicking air with a core in hand does the same press; sneak-right-click
   clears it (`release` by default, a confirmed `destroy` on request).
-- Death-preserve (off by default): a tracked mob about to die to a configured
-  damage source is saved into the core that released it instead - searched
-  slot -> inventory -> corpse, capture gates first, recorded as `dead_mob`.
+- Death-preserve (needs the `preservation` enchantment on the core): a tracked
+  mob about to die to a configured damage source is saved into the core that
+  released it instead - searched slot -> inventory -> corpse, capture gates
+  first, recorded as `dead_mob`.
 - Gear Evolution `addon_chains` data for all seventeen core tiers, following
   the same setup Lightman's wallets and Traveler Tool Belts already use.
 
@@ -42,7 +43,6 @@ server owner sets; nothing here is a client preference):
 
 | Key | Default | Meaning |
 |---|---|---|
-| `deathSave.enabled` | `false` | Master switch: may a dying tracked mob be preserved into its core instead? |
 | `deathSave.damageSources` | `minecraft:mob_attack`, `minecraft:player_attack` | Damage types that may trigger preservation; everything else (void included) kills by omission |
 | `deathSave.allowNonSlotCores` | `false` | Widen the core *search* beyond the Curios slot to the main inventory; linkage identity stays absolute either way |
 | `deathSave.searchCorpses` | `true` | Also search the owner's Corpse inventory (no-op without Corpse) |

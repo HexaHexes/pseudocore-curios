@@ -34,7 +34,8 @@ the unload position refresh, the linkage cap/forget, the Curios slot
 accept/reject pair, the hotkey refusal/release pair, the recall quartet
 (capture, unreachable, wrong-core, anti-theft) with the waypoint payload
 folded in, the air right-click release/recall pair, the upgrade-stamp
-cross-repo round trip, the death-preserve quintet, the clear-gesture
+cross-repo round trip, the death-preserve quintet (enchantment-gated
+since #67), the clear-gesture
 quartet (release default, destroy confirm, instant death-wipe,
 silent-and-free no-op), the dragon-core air-press gate (#48), and the
 offhand air-press gate (#51), and the clear-destroy element-trait wipe (#60)).
@@ -83,10 +84,10 @@ from the `gametestMods` configuration - which carries **Ice and Fire CE
   `mockPlayer` pins `tamedMobsOnly` off for copper/iron once, suite-wide,
   never restored - a flip-flop across parallel tests would race (each
   gametest body is atomic within its tick, so an idempotent one-way pin is
-  safe and a restore is not). The same one-way rule governs the
-  `deathSave*` flips: each death test flips ON and restores OFF **inside
-  one synchronous body**, and only the HAS_DEAD press hop runs after the
-  restore (the press never reads the switch).
+  safe and a restore is not). Since #67 the death-preserve tests carry the
+  `preservation` enchantment on their probe cores (`makePreserving`)
+  instead of flipping a config switch; only `allowNonSlotCores` is still
+  flipped, in one synchronous body with a `finally` restore.
 - One player, one throttle: `ReleaseRecallAction.checkCooldown`/`LAST_USE`
   is shared by the hotkey, the air click and the clear gesture (#11/#34/#15)
   - press-and-remember in one place, so no trigger can bypass or desync the
