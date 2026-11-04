@@ -28,7 +28,7 @@ wallet chains ship in lightmans-tensura.
   inert without their reader; code paths gate through Pseudocore's
   `TensuraBridge`, never by importing Tensura types.
 
-**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (26 tests:
+**Test:** `./gradlew runGameTestServer` - `PseudocoreCuriosGameTests` (31 tests:
 smoke, the Gear Evolution NBT-retention gate, the linkage stamp/tag/record,
 the unload position refresh, the linkage cap/forget, the Curios slot
 accept/reject pair, the hotkey refusal/release pair, the recall quartet
@@ -38,8 +38,11 @@ cross-repo round trip, the death-preserve quintet (enchantment-gated
 since #67), the clear-gesture
 quartet (release default, destroy confirm, instant death-wipe,
 silent-and-free no-op), the dragon-core air-press gate (#48), and the
-offhand air-press gate (#51), and the clear-destroy element-trait wipe (#60)).
-`expectedTests = 26` in
+offhand air-press gate (#51), the clear-destroy element-trait wipe (#60),
+the ability-native press pipeline (#69), and the #71 quartet (read-time
+re-clamp, the press on the active stack, the slot-6 death search, and
+the re-join persistence round trip)).
+`expectedTests = 31` in
 `build.gradle` must match the `@GameTest` count.
 Game-test dependencies are staged into `run/mods` by `prepareGametestMods`
 from the `gametestMods` configuration - which carries **Ice and Fire CE

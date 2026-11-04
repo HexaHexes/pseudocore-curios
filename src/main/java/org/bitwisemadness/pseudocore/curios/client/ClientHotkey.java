@@ -6,9 +6,8 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.net.ReleaseRecallC2S;
-import top.theillusivec4.curios.api.CuriosApi;
 
 /**
  * The client half of the release/recall hotkey (#11): the keybind and the
@@ -19,12 +18,11 @@ import top.theillusivec4.curios.api.CuriosApi;
  * any KeyMapping. Only ever loaded behind a client-distribution check in the
  * mod constructor, so a dedicated server never resolves a client class.</p>
  *
- * <p>The press is gated on a non-empty Curios slot exactly as the issue
- * worded it ("while a core sits in the slot"): cheap, client-local, and
- * purely about not sending presses that would certainly be refused. The
- * server re-checks everything against its own state anyway - a stale client
- * view can at worst suppress a press until the next slot sync, never make
- * the server act wrongly.</p>
+ * <p>The press is gated on a Curios slot holding a core (#71: any of the
+ * six): cheap, client-local, and purely about not sending presses that
+ * would certainly be refused. The server re-checks everything against its
+ * own state anyway - a stale client view can at worst suppress a press
+ * until the next slot sync, never make the server act wrongly.</p>
  */
 public final class ClientHotkey {
 
@@ -70,11 +68,22 @@ public final class ClientHotkey {
         }
     }
 
-    /** The client's own view of the Curios slot: present and non-empty. */
+    /**
+     * The client's own view of the Curios slot (#71): present, with at
+     * least one core in its six slots. The server resolves <b>which</b>
+     * slot the press acts on; this precheck only skips presses that would
+     * certainly be refused, so "any slot filled" is the exact predicate.
+     */
     private static boolean coreInSlot(net.minecraft.world.entity.player.Player player) {
-        return CuriosApi.getCuriosInventory(player)
-                .map(inventory -> inventory.getCurios().get(PseudocoreCurios.SLOT_ID))
-                .map(stacks -> !stacks.getStacks().getStackInSlot(0).isEmpty())
-                .orElse(false);
+        var stacks = ActiveCore.stacks(player);
+        if (stacks == null) {
+            return false;
+        }
+        for (int i = 0; i < stacks.getSlots(); i++) {
+            if (!stacks.getStackInSlot(i).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -17,15 +17,15 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
-import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
+import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.curios.net.UnreachableRecallS2C;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.registry.ModDataComponents;
 import org.bitwisemadness.pseudocore.util.IafHornAccess;
-import top.theillusivec4.curios.api.CuriosApi;
 
 /**
  * The server side of the release/recall hotkey (#11): what one validated press
@@ -127,17 +127,19 @@ public final class ReleaseRecallAction {
      * @return the refusal to tell the player, or null when the press acted
      */
     public static Refusal handle(ServerPlayer player) {
-        var inventory = CuriosApi.getCuriosInventory(player).orElse(null);
-        var stacks = inventory == null ? null
-                : inventory.getCurios().get(PseudocoreCurios.SLOT_ID);
+        var stacks = ActiveCore.stacks(player);
         if (stacks == null) {
             return refuse(player, Refusal.NO_SLOT);
         }
 
-        ItemStack stack = stacks.getStacks().getStackInSlot(0);
-        if (stack.isEmpty()) {
+        // Resolve the active core (#71): clamped selection, falling back
+        // to the first non-empty slot so an emptied selection never
+        // strands the press - -1 only when every slot is empty.
+        int index = ActiveCore.resolveIndex(stacks, ModAttachments.activeCoreIndex(player));
+        if (index < 0) {
             return refuse(player, Refusal.NO_CORE);
         }
+        ItemStack stack = stacks.getStackInSlot(index);
         if (!isCore(stack.getItem())) {
             return refuse(player, Refusal.NOT_CORE);
         }

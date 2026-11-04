@@ -13,10 +13,12 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
+import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
 import org.bitwisemadness.pseudocore.curios.linkage.ModLinkageComponents;
 import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 import org.bitwisemadness.pseudocore.item.component.ContainedMobComponent;
@@ -138,17 +140,25 @@ public final class DeathPreserveEvents {
     /**
      * Slot -> inventory -> corpse, each leg narrowed to the linkage match
      * and an empty-of-live-mobs core; the slot always wins over the
-     * inventory (the issue's "slot preferred").
+     * inventory (the issue's "slot preferred"). Within the slot, the
+     * active core (#71) is searched first as a preference order - the
+     * identity is always the linkage stamp, never the position.
      */
     private static ItemStack findPreservableCore(ServerPlayer player, ServerLevel level,
                                                   UUID owner, UUID linkage) {
-        // 1. The Curios slot - the hotkey's own home.
-        var slot = top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player)
-                .map(inv -> inv.getCurios().get(PseudocoreCurios.SLOT_ID))
-                .map(stacks -> stacks.getStacks().getStackInSlot(0))
-                .orElse(null);
-        if (isPreservable(slot, linkage)) {
-            return slot;
+        // 1. The Curios slots - the hotkey's own home. Active first (#71),
+        // then every slot: a core moved between slots is still findable.
+        var stacks = ActiveCore.stacks(player);
+        if (stacks != null) {
+            int active = ActiveCore.resolveIndex(stacks, ModAttachments.activeCoreIndex(player));
+            if (active >= 0 && isPreservable(stacks.getStackInSlot(active), linkage)) {
+                return stacks.getStackInSlot(active);
+            }
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                if (i != active && isPreservable(stacks.getStackInSlot(i), linkage)) {
+                    return stacks.getStackInSlot(i);
+                }
+            }
         }
 
         // 2. The inventory - main storage only: hotbar + main rows, never
