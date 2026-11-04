@@ -41,7 +41,12 @@ side = "BOTH"
 [[dependencies.${mod_id}]]
 modId = "pseudocore"
 type = "required"
-versionRange = "[${pseudocore_version},)"
+# Deliberately a literal floor, not the pseudocore_version substitution:
+# Maven orders 2.2.0-alpha.2 BELOW 2.2.0, so a substituted floor refuses
+# the alpha train the pack runs (#77) - the floor is the first sound
+# build of the 2.2.0 line (alpha.1 bricked clients, pseudocore#168) and
+# admits the rest of the train, stable 2.2.0 and everything above.
+versionRange = "[2.2.0-alpha.2,)"
 ordering = "AFTER"
 side = "BOTH"
 
