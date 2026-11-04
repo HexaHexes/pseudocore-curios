@@ -14,6 +14,11 @@ rather than in Lightman's Currency.
 - Six Curios slots holding a party of cores (beast and dragon lines), with a
   selector strip above the hotbar framing the active one - the core the
   addon's own hotkey releases and recalls.
+- Its own non-assignable ability-hotbar bar (`pseudocore_curios:curios`,
+  optional - only with Ability Hotbar installed): six cells mirroring the
+  Curios slots, the press verb seeded into each *filled* cell, and activating
+  a cell release/recalls *that cell's* core. The menu never lists the bar and
+  empty cells stay empty.
 - A rebindable hotkey (default the `` ` `` key) that releases the active
   core's stored mob at the player's position, and recalls it again. Recall
   reuses Pseudocore's capture paths, so every gate (ownership, tier limits,
@@ -39,6 +44,8 @@ rather than in Lightman's Currency.
 | Optional | Gear Evolution | Reads the addon_chains data; without it the files sit unread |
 | Optional | Corpse | One death-save search leg (the corpse inventory); gated by mod presence, absent = that leg is skipped |
 | Optional | Xaero's Minimap | Waypoint drop on unreachable recall; client-only, absent = no waypoint |
+| Optional | Tensura Ability Core | The `press` ability and its activation pipeline (#69); absent = the addon runs on its own hotkey path alone |
+| Optional | Ability Hotbar | The addon's own non-assignable curios bar (#72): registration, seeded cell verbs, cell presses; absent = no bar and no seam |
 
 ## Configuration
 

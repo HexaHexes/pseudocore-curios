@@ -147,6 +147,31 @@ public final class ReleaseRecallAction {
     }
 
     /**
+     * One press for a <b>specific</b> Curios slot (#72): the curios bar's
+     * seeded cell acts on its own cell's core - {@code slotContext} is
+     * the cell index, so the bar never guesses which core is meant. The
+     * slot-shape refusals mirror {@link #handle}, range-checked against
+     * the live slots so a stale cell (seeded, then the core unequipped)
+     * refuses instead of pressing a neighbour.
+     *
+     * @return the refusal to tell the player, or null when the press acted
+     */
+    public static Refusal handleSlot(ServerPlayer player, int slot) {
+        var stacks = ActiveCore.stacks(player);
+        if (stacks == null || slot < 0 || slot >= stacks.getSlots()) {
+            return refuse(player, Refusal.NO_SLOT);
+        }
+        ItemStack stack = stacks.getStackInSlot(slot);
+        if (stack.isEmpty()) {
+            return refuse(player, Refusal.NO_CORE);
+        }
+        if (!isCore(stack.getItem())) {
+            return refuse(player, Refusal.NOT_CORE);
+        }
+        return press(player, stack);
+    }
+
+    /**
      * One press against a <b>given</b> core stack: the shared body behind
      * both entry points - the slot hotkey ({@link #handle}) and the air
      * right-click (#34) - so cooldown, release and recall can never drift

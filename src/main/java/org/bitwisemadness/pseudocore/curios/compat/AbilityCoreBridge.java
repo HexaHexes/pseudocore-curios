@@ -104,14 +104,23 @@ public final class AbilityCoreBridge {
     }
 
     /**
-     * The native pipeline: the curios slot stack through the hotkey's own
-     * press (#11/#15 - the slot-based entry point), so the curios bar and
-     * the hotkey are literally the same verb. The press has already
-     * messaged the player for any refusal (#12's design), so only core's
-     * outcome vocabulary travels back.
+     * The native pipeline entry (#72): a curios-bar cell pressing its own
+     * core - {@code slotContext} is the cell index, mapped to that Curios
+     * slot through {@link ReleaseRecallAction#handleSlot}, so the bar
+     * names its target explicitly while the addon's own hotkey (a
+     * separate packet, active-core) keeps today's semantics untouched.
+     * The press has already messaged the player for any refusal (#12's
+     * design), so only core's outcome vocabulary travels back.
      */
     private static ActivationResult press(ActivationRequest request, ServerPlayer player) {
-        ReleaseRecallAction.Refusal refusal = ReleaseRecallAction.handle(player);
+        int slot = request.slotContext();
+        if (slot < 0) {
+            // The pipeline's press exists only for the curios bar's
+            // seeded cells (#72): a request without one refuses
+            // fail-closed rather than guessing which core is meant.
+            return ActivationResult.refused(ActivationOutcome.REFUSED_UNAVAILABLE);
+        }
+        ReleaseRecallAction.Refusal refusal = ReleaseRecallAction.handleSlot(player, slot);
         if (refusal == null) {
             return ActivationResult.ACTED;
         }

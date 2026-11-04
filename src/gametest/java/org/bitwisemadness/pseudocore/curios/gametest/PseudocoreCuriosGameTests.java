@@ -1167,7 +1167,8 @@ public final class PseudocoreCuriosGameTests {
                 .orElseThrow()
                 .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(
                                 org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID,
-                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT),
+                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT)
+                                .withSlot(0),
                         player);
         check(empty.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_UNAVAILABLE,
                 "an empty slot must refuse UNAVAILABLE through core's vocabulary, got " + empty.outcome());
@@ -1183,7 +1184,8 @@ public final class PseudocoreCuriosGameTests {
                 .orElseThrow()
                 .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(
                                 org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID,
-                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT),
+                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT)
+                                .withSlot(0),
                         player);
         check(acted.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.ACTED,
                 "a filled core must release through the ability, got " + acted.outcome());
@@ -1195,7 +1197,8 @@ public final class PseudocoreCuriosGameTests {
                 .orElseThrow()
                 .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(
                                 org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID,
-                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT),
+                                org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT)
+                                .withSlot(0),
                         player);
         check(cooled.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_COOLDOWN,
                 "the second press must be refused as COOLDOWN, got " + cooled.outcome());
@@ -1209,6 +1212,143 @@ public final class PseudocoreCuriosGameTests {
                 "the overlay must project the shared throttle as a known metric");
         check(overlay.get().isAvailable(),
                 "a slot holding a core must project as available");
+
+        helper.succeed();
+    }
+
+    /**
+     * The curios bar's seam (#72): registered non-assignable, press
+     * scoped to it, cell provider attached - all through the optional
+     * hotbar dependency this suite stages.
+     */
+    @GameTest(template = "empty")
+    public static void curiosBarIsRegisteredScopedAndProvided(GameTestHelper helper) {
+        check(ModList.get().isLoaded("ability_hotbar"),
+                "ability-hotbar must be staged for the curios-bar tests (#72)");
+
+        var barId = org.bitwisemadness.pseudocore.curios.compat.CuriosBarBridge.CURIO_BAR;
+        var bar = org.bitwisemadness.abilityhotbar.registry.HotbarRegistry.get(barId);
+        check(bar.isPresent(), "the curios bar must be registered");
+        check(!bar.get().assignable(),
+                "the curios bar must be non-assignable - the menu can never list it (#72)");
+
+        var scope = org.bitwisemadness.abilityhotbar.registry.AbilityBarScopes.scopeOf(
+                org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID);
+        check(scope.isPresent() && scope.get().equals(barId),
+                "press must be scoped to the curios bar only (#90)");
+
+        // Client-only by link-safety (CuriosBarBridge.register): the
+        // provider reads Minecraft's player, which this DEDICATED_SERVER
+        // dist strips; the hotbar invokes it client-side only (#83).
+        if (net.neoforged.fml.loading.FMLEnvironment.dist
+                == net.neoforged.api.distmarker.Dist.CLIENT) {
+            check(org.bitwisemadness.abilityhotbar.content.HotbarContentProviders.get(barId)
+                            .isPresent(),
+                    "the cell provider must be registered for the curios bar (#83)");
+        }
+
+        helper.succeed();
+    }
+
+    /**
+     * Seeding tracks the Curios slots (#72): the CurioChangeEvent is the
+     * trigger and Curios the truth - a core's cell carries press, an
+     * emptied cell is cleared (hotbar#92's idempotent overwrite).
+     */
+    @GameTest(template = "empty")
+    public static void seedingFollowsTheCuriosSlots(GameTestHelper helper) {
+        check(ModList.get().isLoaded("ability_hotbar"),
+                "ability-hotbar must be staged for the curios-bar tests (#72)");
+        var player = mockPlayer(helper);
+        var barId = org.bitwisemadness.pseudocore.curios.compat.CuriosBarBridge.CURIO_BAR;
+        var pressId = org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID;
+        var stateKey = org.bitwisemadness.abilityhotbar.state.BarStateAttachments.BAR_STATE;
+
+        ItemStack copper = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        equipInSlot(player, 0, copper);
+        NeoForge.EVENT_BUS.post(new top.theillusivec4.curios.api.event.CurioChangeEvent(
+                player, PseudocoreCurios.SLOT_ID, 0, ItemStack.EMPTY, copper));
+
+        var seeded = org.bitwisemadness.abilityhotbar.state.SeededAssignments.storedBar(
+                player.getData(stateKey.get()), barId);
+        check(seeded.isPresent(), "a filled slot must seed the bar's entry (#72)");
+        var assignments = seeded.get().assignments();
+        check(assignments.length > 0 && assignments[0].abilityId() != null
+                        && assignments[0].abilityId().equals(pressId),
+                "the filled cell must carry press, got "
+                        + (assignments.length > 0 ? assignments[0].abilityId() : "no slots"));
+        check(assignments.length < 2 || assignments[1].abilityId() == null,
+                "the empty neighbour must stay unassigned");
+
+        equipInSlot(player, 0, ItemStack.EMPTY);
+        NeoForge.EVENT_BUS.post(new top.theillusivec4.curios.api.event.CurioChangeEvent(
+                player, PseudocoreCurios.SLOT_ID, 0, copper, ItemStack.EMPTY));
+        var cleared = org.bitwisemadness.abilityhotbar.state.SeededAssignments.storedBar(
+                player.getData(stateKey.get()), barId);
+        check(cleared.isEmpty()
+                        || cleared.get().assignments().length == 0
+                        || cleared.get().assignments()[0].abilityId() == null,
+                "an emptied slot must clear its cell (#72)");
+
+        helper.succeed();
+    }
+
+    /**
+     * A cell presses its own core (#72): {@code slotContext} is the
+     * cell - a missing cell refuses fail-closed (never a guessed
+     * active-core press), an out-of-range cell refuses before touching
+     * anything, and a real cell releases that Curios slot while its
+     * neighbour keeps its mob.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void pressActsOnTheSeededCellSlot(GameTestHelper helper) {
+        check(ModList.get().isLoaded("ability_hotbar"),
+                "ability-hotbar must be staged for the curios-bar tests (#72)");
+        var player = mockPlayer(helper);
+        var pressId = org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID;
+        var source = org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT;
+        var handler = org.bitwisemadness.abilitycore.AbilityCore.HANDLERS.get(pressId)
+                .orElseThrow();
+
+        var noSlot = handler.activate(
+                org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source), player);
+        check(noSlot.outcome()
+                        == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_UNAVAILABLE,
+                "a pipeline press without slotContext must refuse UNAVAILABLE, got "
+                        + noSlot.outcome());
+
+        var outOfRange = handler.activate(
+                org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source)
+                        .withSlot(PseudocoreCurios.SLOT_COUNT + 3), player);
+        check(outOfRange.outcome()
+                        == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_UNAVAILABLE,
+                "an out-of-range cell must refuse UNAVAILABLE, got " + outOfRange.outcome());
+
+        var first = helper.spawn(EntityType.COW, 1, 1, 1);
+        var second = helper.spawn(EntityType.COW, 2, 1, 2);
+        ItemStack slotZero = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        ItemStack slotOne = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        check(PseudocoreItem.tryCapture(player, first, slotZero) == InteractionResult.SUCCESS,
+                "the first capture must succeed");
+        check(PseudocoreItem.tryCapture(player, second, slotOne) == InteractionResult.SUCCESS,
+                "the second capture must succeed");
+        equipInSlot(player, 0, slotZero);
+        equipInSlot(player, 1, slotOne);
+
+        var acted = handler.activate(
+                org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source)
+                        .withSlot(0), player);
+        check(acted.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.ACTED,
+                "cell 0 must press its own core, got " + acted.outcome());
+        check(!slotStack(player, 0).has(ModDataComponents.CONTAINED_MOB.get()),
+                "cell 0's core must have released");
+        check(slotStack(player, 0).get(ModLinkageComponents.LINKAGE.get()) != null,
+                "release must stamp cell 0's core");
+        check(slotStack(player, 1).has(ModDataComponents.CONTAINED_MOB.get()),
+                "the neighbour's core must keep its mob");
 
         helper.succeed();
     }
@@ -1480,6 +1620,11 @@ public final class PseudocoreCuriosGameTests {
         // listed ad-hoc channels, and unreachable() sends this one.
         curiosChannels.add(ResourceLocation.fromNamespaceAndPath(
                 PseudocoreCurios.MOD_ID, "unreachable_recall"));
+        // The curios bar's snapshot (hotbar#89/#92): login seeding echoes one
+        // per seed; unlisted, placeNewPlayer aborts on the mock connection
+        // (observed: cascading failures far from the seeding test itself).
+        curiosChannels.add(ResourceLocation.fromNamespaceAndPath(
+                "ability_hotbar", "bar_state_snapshot"));
 
         try {
             server.getPlayerList().placeNewPlayer(connection, player,
