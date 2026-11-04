@@ -129,15 +129,22 @@ public final class AbilityCoreBridge {
      * (#71 - the hotkey's target), cost unknown for now - the contract
      * renders nothing rather than a lie, and the dynamic MP estimate
      * rides a pseudocore-side public API later.
+     *
+     * <p>The cooldown metric follows the same honesty rule: the throttle
+     * lives in the server-only {@code LAST_USE} map, so only a
+     * {@link ServerPlayer} can answer it - off-server the answer is
+     * {@code unknown} (REQ-HOT-08 renders nothing for unknown) rather
+     * than a projected zero that would draw "ready" mid-cooldown.
+     * Core's cooldown contract (ability-core#16) is the eventual path
+     * to a real client-side number.</p>
      */
     private static AbilityAvailability pressAvailability(Player player, ResourceLocation id) {
-        double progress = 0.0D;
-        if (player instanceof ServerPlayer serverPlayer) {
-            progress = ReleaseRecallAction.cooldownProgress(serverPlayer);
-        }
+        Metric<Double> cooldown = player instanceof ServerPlayer serverPlayer
+                ? Metric.known((double) ReleaseRecallAction.cooldownProgress(serverPlayer))
+                : Metric.unknown();
         boolean hasCore = ReleaseRecallAction.isCore(ActiveCore.resolveStack(player).getItem());
         return new AbilityAvailability(
-                Metric.known(progress),
+                cooldown,
                 Metric.unknown(),
                 hasCore ? AvailabilityState.available()
                         : AvailabilityState.unavailable("no active core"));
