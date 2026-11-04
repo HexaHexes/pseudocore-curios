@@ -2,6 +2,7 @@
   "key.pseudocore_curios.release_recall": "Release / Recall Core",
   "key.categories.pseudocore_curios": "Pseudocore",
   "pseudocore_curios.ability.press": "Core Press",
+  "pseudocore_curios.bar.curios": "Pseudocore Cores",
   "pseudocore_curios.message.no_slot": "You have no Pseudocore slot",
   "pseudocore_curios.message.no_core": "Your Pseudocore slot holds no core",
   "pseudocore_curios.message.not_core": "That is not a Pseudocore core",
