@@ -148,17 +148,22 @@ configurations {
 }
 
 dependencies {
+    // Dependency pins live here rather than in gradle.properties: the version
+    // doctrine keeps that file for version bumps only (ci.yml), so pins ride
+    // with the dependency that needs them - the pattern ability-hotbar uses.
+    def abilityCoreVersion = '1.0.0-alpha.15'
+    def abilityHotbarVersion = '1.0.0-alpha.36'
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
     // Ability core: optional. The press ability (#69) registers through its
     // contracts; the addon works fully without it (the hotkey path). Same
     // GitHub Packages read as pseudocore.
-    compileOnly "org.bitwisemadness.abilitycore:ability_core:${ability_core_version}"
+    compileOnly "org.bitwisemadness.abilitycore:ability_core:${abilityCoreVersion}"
     // Ability hotbar: optional, the same rule as core - the curios-bar seam
     // (#72) registers only when the bar mod is present, and without it the
     // addon behaves exactly as #71 shipped.
-    compileOnly "org.bitwisemadness.abilityhotbar:ability_hotbar:${ability_hotbar_version}"
+    compileOnly "org.bitwisemadness.abilityhotbar:ability_hotbar:${abilityHotbarVersion}"
     // The slot this mod adds. Never bundled.
     compileOnly "curse.maven:curios-309927:${curios_file_id}"
     // Gear Evolution and Tensura, for the retention suite that drives GE's
@@ -183,8 +188,8 @@ dependencies {
     // closure mirrors tensura-tool-belt's, so the retention suite runs against
     // the pack's real evolution stack.
     gametestMods "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
-    gametestMods "org.bitwisemadness.abilitycore:ability_core:${ability_core_version}"
-    gametestMods "org.bitwisemadness.abilityhotbar:ability_hotbar:${ability_hotbar_version}"
+    gametestMods "org.bitwisemadness.abilitycore:ability_core:${abilityCoreVersion}"
+    gametestMods "org.bitwisemadness.abilityhotbar:ability_hotbar:${abilityHotbarVersion}"
     gametestMods "curse.maven:curios-309927:${curios_file_id}"
     gametestMods "curse.maven:gearevolution-1501711:${gearevolution_file_id}"
     gametestMods "curse.maven:architectury-419699:${architectury_file_id}"
