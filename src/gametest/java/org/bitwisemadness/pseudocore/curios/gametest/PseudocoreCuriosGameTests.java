@@ -1354,6 +1354,113 @@ public final class PseudocoreCuriosGameTests {
     }
 
     /**
+     * Aimed capture (#71's press-with-target): an {@code EntityHint} on
+     * the request makes the cell's core capture the named mob - the
+     * wire (hotbar#94) only transports what this test builds directly,
+     * so the whole verb is provable headless before alpha.36 ships the
+     * crosshair population.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void aimedPressCapturesIntoTheCell(GameTestHelper helper) {
+        check(ModList.get().isLoaded("ability_hotbar"),
+                "ability-hotbar must be staged for the curios-bar tests (#72)");
+        var player = mockPlayer(helper);
+        var pressId = org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID;
+        var source = org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT;
+
+        var cow = helper.spawn(EntityType.COW, 3, 1, 3);
+        // The harness joins the player at world spawn while structures sit
+        // far away: bring the target into reach, as any crosshair aim is.
+        cow.teleportTo(player.getX() + 2.0D, player.getY(), player.getZ());
+        ItemStack cell = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        equipInSlot(player, 0, cell);
+
+        var aimed = org.bitwisemadness.abilitycore.AbilityCore.HANDLERS.get(pressId)
+                .orElseThrow()
+                .activate(org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source)
+                        .withSlot(0)
+                        .withTarget(new org.bitwisemadness.abilitycore.api.TargetContext
+                                .EntityHint(cow.getUUID())),
+                        player);
+        check(aimed.outcome() == org.bitwisemadness.abilitycore.api.ActivationOutcome.ACTED,
+                "an aimed press must capture into the cell, got " + aimed.outcome());
+        check(slotStack(player, 0).has(ModDataComponents.CONTAINED_MOB.get()),
+                "the cell's core must hold the captured mob");
+        check(helper.getLevel().getEntity(cow.getUUID()) == null,
+                "the captured cow must leave the world - capture, not merely a refusal");
+
+        helper.succeed();
+    }
+
+    /**
+     * Aimed-capture refusals (#71): a hint that resolves to nothing is
+     * refused right here - the handler re-resolves it itself, because
+     * the HANDLERS entry is reachable without the pipeline (the payload
+     * path refuses such hints upstream in TargetValidationStep too), a
+     * resolvable but out-of-reach mob is refused on vanilla's +1.0
+     * buffer, and an aim at a cell without a core refuses before
+     * anything else - never a guessed capture.
+     */
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void aimedPressRefusesBadTargets(GameTestHelper helper) {
+        check(ModList.get().isLoaded("ability_hotbar"),
+                "ability-hotbar must be staged for the curios-bar tests (#72)");
+        var player = mockPlayer(helper);
+        var pressId = org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID;
+        var source = org.bitwisemadness.abilitycore.api.ActivationSource.DIRECT_SLOT;
+        var handler = org.bitwisemadness.abilitycore.AbilityCore.HANDLERS.get(pressId)
+                .orElseThrow();
+
+        // The cell must hold a core for the target checks to be reached
+        // at all - cell shape is validated before the aim.
+        ItemStack cell = core(helper,
+                org.bitwisemadness.pseudocore.registry.ModItems.COPPER_PSEUDOCORE.get());
+        equipInSlot(player, 0, cell);
+        // An id that never existed: resolution fails upstream of our handler.
+        var gone = handler.activate(
+                org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source)
+                        .withSlot(0)
+                        .withTarget(new org.bitwisemadness.abilitycore.api.TargetContext
+                                .EntityHint(UUID.randomUUID())),
+                        player);
+        check(gone.outcome()
+                        == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_INVALID_TARGET,
+                "an unresolvable hint must refuse INVALID_TARGET, got " + gone.outcome());
+
+        // Resolvable but far: the handler's own reach check refuses it.
+        // The far cow is teleported away so the refusal does not depend
+        // on where this run's structure happens to sit.
+        var far = helper.spawn(EntityType.COW, 40, 1, 40);
+        far.teleportTo(player.getX() + 40.0D, player.getY(), player.getZ());
+        var outOfReach = handler.activate(
+                org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source)
+                        .withSlot(0)
+                        .withTarget(new org.bitwisemadness.abilitycore.api.TargetContext
+                                .EntityHint(far.getUUID())),
+                        player);
+        check(outOfReach.outcome()
+                        == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_INVALID_TARGET,
+                "an out-of-reach target must refuse INVALID_TARGET, got "
+                        + outOfReach.outcome());
+
+        // A valid aim at a cell that holds no core: refused, cell first.
+        var near = helper.spawn(EntityType.COW, 2, 1, 2);
+        var emptyCell = handler.activate(
+                org.bitwisemadness.abilitycore.api.ActivationRequest.of(pressId, source)
+                        .withSlot(PseudocoreCurios.SLOT_COUNT - 1)
+                        .withTarget(new org.bitwisemadness.abilitycore.api.TargetContext
+                                .EntityHint(near.getUUID())),
+                        player);
+        check(emptyCell.outcome()
+                        == org.bitwisemadness.abilitycore.api.ActivationOutcome.REFUSED_UNAVAILABLE,
+                "an aim at an empty cell must refuse UNAVAILABLE, got "
+                        + emptyCell.outcome());
+
+        helper.succeed();
+    }
+
+    /**
      * Read-time resolution (#71): the stored index is never rewritten by
      * looking at it - clamped to the live slots, fallen back to the first
      * non-empty, -1 only when every slot is empty.
