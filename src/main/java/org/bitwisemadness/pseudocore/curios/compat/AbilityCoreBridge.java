@@ -4,6 +4,8 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -18,9 +20,11 @@ import org.bitwisemadness.abilitycore.api.AvailabilityProviders;
 import org.bitwisemadness.abilitycore.api.AvailabilityState;
 import org.bitwisemadness.abilitycore.api.ChargingModel;
 import org.bitwisemadness.abilitycore.api.Metric;
+import org.bitwisemadness.abilitycore.api.TargetContext;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
+import org.bitwisemadness.pseudocore.item.PseudocoreItem;
 
 /**
  * The ability-core seam (#69/#71): registers {@code pseudocore_curios:press}
@@ -111,6 +115,10 @@ public final class AbilityCoreBridge {
      * separate packet, active-core) keeps today's semantics untouched.
      * The press has already messaged the player for any refusal (#12's
      * design), so only core's outcome vocabulary travels back.
+     *
+     * <p>An aimed press - a crosshair {@link TargetContext.EntityHint} on
+     * the request (hotbar#94's population) - is the capture half of the
+     * same cell: #71's press-with-target ruling, {@link #captureAimed}.</p>
      */
     private static ActivationResult press(ActivationRequest request, ServerPlayer player) {
         int slot = request.slotContext();
@@ -119,6 +127,9 @@ public final class AbilityCoreBridge {
             // seeded cells (#72): a request without one refuses
             // fail-closed rather than guessing which core is meant.
             return ActivationResult.refused(ActivationOutcome.REFUSED_UNAVAILABLE);
+        }
+        if (request.target() instanceof TargetContext.EntityHint hint) {
+            return captureAimed(player, slot, hint);
         }
         ReleaseRecallAction.Refusal refusal = ReleaseRecallAction.handleSlot(player, slot);
         if (refusal == null) {
@@ -130,6 +141,42 @@ public final class AbilityCoreBridge {
             case GATED -> ActivationOutcome.REFUSED_RESTRICTED;
             default -> ActivationOutcome.REFUSED_UNAVAILABLE;
         });
+    }
+
+    /**
+     * Aimed capture - #71's press-with-target ruling: the cell's core
+     * captures the entity the crosshair named. The hint arrives already
+     * resolved on the wire path (TargetValidationStep), but the handler
+     * re-looks it up itself - the HANDLERS entry is reachable without
+     * the pipeline. The cell is checked (a stale seeded cell refuses,
+     * never a neighbour), the target is range-checked with vanilla's
+     * own {@code canInteractWithEntity} convention (+1.0 - the buffer
+     * its interact packets use), and the capture runs through the
+     * ordinary {@link PseudocoreItem#tryCapture} gates, charges and
+     * messages - the pipeline only carries the outcome vocabulary.
+     */
+    private static ActivationResult captureAimed(ServerPlayer player, int slot,
+                                                 TargetContext.EntityHint hint) {
+        var stacks = ActiveCore.stacks(player);
+        if (stacks == null || slot < 0 || slot >= stacks.getSlots()
+                || !ReleaseRecallAction.isCore(stacks.getStackInSlot(slot).getItem())) {
+            // Stale cell (seeded, then emptied) or a slot that never held
+            // a core: the bar shows unavailable; no message, no guessing.
+            return ActivationResult.refused(ActivationOutcome.REFUSED_UNAVAILABLE);
+        }
+        var entity = player.serverLevel().getEntity(hint.entityId());
+        if (!(entity instanceof LivingEntity target)
+                || !player.canInteractWithEntity(target, 1.0)) {
+            return ActivationResult.refused(ActivationOutcome.REFUSED_INVALID_TARGET);
+        }
+        if (PseudocoreItem.tryCapture(player, target, stacks.getStackInSlot(slot))
+                == InteractionResult.SUCCESS) {
+            return ActivationResult.ACTED;
+        }
+        // tryCapture has already messaged its specific reason; a single
+        // InteractionResult cannot separate gates from an empty pool, so
+        // the outcome is RESTRICTED (the actionbar tells the exact truth).
+        return ActivationResult.refused(ActivationOutcome.REFUSED_RESTRICTED);
     }
 
     /**
