@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import org.bitwisemadness.abilityhotbar.content.HotbarContentProvider;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.compat.CuriosBarBridge;
 
 /**
  * What the addon's curios bar shows (#72): the six Curios slots,
@@ -42,6 +43,17 @@ public final class CuriosBarContentProvider implements HotbarContentProvider {
 
     @Override
     public int activeSlot() {
+        // Ruling (2026-11-05, #82): with Ability Hotbar loaded the addon's
+        // keybind is unregistered, so the bar's wheel selection IS the
+        // active slot - the frame follows it; the attachment is fallback.
+        var state = org.bitwisemadness.abilityhotbar.client.ClientBarState.get();
+        if (state != null) {
+            for (var bar : state.bars()) {
+                if (CuriosBarBridge.CURIO_BAR.equals(bar.id())) {
+                    return Math.min(bar.selectedSlot(), PseudocoreCurios.SLOT_COUNT - 1);
+                }
+            }
+        }
         var player = Minecraft.getInstance().player;
         return player == null ? -1 : ActiveCore.resolveIndex(player);
     }

@@ -42,9 +42,12 @@ public final class PseudocoreCurios {
         org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig.register(container);
         modBus.addListener(org.bitwisemadness.pseudocore.curios.net.ModNetwork::register);
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
-            // The reference below only resolves when this branch runs, so a
-            // dedicated server never loads the client hotkey class.
-            org.bitwisemadness.pseudocore.curios.client.ClientHotkey.register(modBus);
+            // Resolves only on this branch (dedicated servers never load the
+            // client class), and only without Ability Hotbar: with the library
+            // the curios bar's cells are the press surface (2026-11-05 ruling).
+            if (!org.bitwisemadness.pseudocore.curios.compat.CuriosBarBridge.isLoaded()) {
+                org.bitwisemadness.pseudocore.curios.client.ClientHotkey.register(modBus);
+            }
             // Death-preserve's client half (#14): tint + tooltip - the same
             // dist discipline for the same reason.
             org.bitwisemadness.pseudocore.curios.client.DeathCoreClient.register(modBus);

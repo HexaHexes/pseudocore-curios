@@ -18,6 +18,13 @@ import org.bitwisemadness.pseudocore.curios.net.ReleaseRecallC2S;
  * any KeyMapping. Only ever loaded behind a client-distribution check in the
  * mod constructor, so a dedicated server never resolves a client class.</p>
  *
+ * <p><b>Not registered when Ability Hotbar is loaded</b> (2026-11-05
+ * ruling): there the curios bar's cells - and its own wheel selection -
+ * are the press surface, and a second keybind for the same verb would
+ * compete with the bar's activation keys. The library is an optional
+ * dependency, so installs without it keep this keybind as the only way
+ * to press.</p>
+ *
  * <p>The press is gated on a Curios slot holding a core (#71: any of the
  * six): cheap, client-local, and purely about not sending presses that
  * would certainly be refused. The server re-checks everything against its
