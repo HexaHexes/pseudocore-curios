@@ -71,6 +71,11 @@ public final class CuriosBarBridge {
             // server-side trips the dist cleaner (FMLCommonSetup abort).
             HotbarContentProviders.register(CURIO_BAR, new CuriosBarContentProvider());
         }
+        // Diagnostic (#79 follow-up): this line in debug.log is the proof the
+        // bar entered HotbarRegistry.all() - the wheel cycle can only reach
+        // what registration put there.
+        PseudocoreCurios.LOGGER.debug("Curios bar registered (provider registered: {})",
+                FMLEnvironment.dist == Dist.CLIENT);
     }
 
     /**
@@ -93,6 +98,9 @@ public final class CuriosBarBridge {
                     ? AbilityCoreBridge.PRESS_ID.toString()
                     : null;
             SeededAssignments.seed(player, CURIO_BAR, slot, ability);
+            // Diagnostic (#79 follow-up): six of these per login prove the
+            // seed ran; a missing press on a filled slot names the culprit.
+            PseudocoreCurios.LOGGER.debug("Seeding curios bar slot {} with {}", slot, ability);
         }
     }
 }
