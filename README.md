@@ -11,8 +11,11 @@ rather than in Lightman's Currency.
 
 ## What it does
 
-- Six Curios slots holding a party of cores (beast and dragon lines); the
-  addon's own hotkey releases and recalls the active core.
+- Six Curios slots holding a party of cores (beast and dragon lines);
+  without Ability Hotbar the addon's own keybind releases and recalls the
+  active core - with the library installed the curios bar's cells and its
+  wheel selection are the press surface instead (the keybind stays
+  unregistered).
 - Its own non-assignable ability-hotbar bar (`pseudocore_curios:curios`,
   optional - only with Ability Hotbar installed): six cells mirroring the
   Curios slots, the press verb seeded into each *filled* cell, and activating
