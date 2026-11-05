@@ -25,7 +25,7 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
  * payloads the recall and waypoint flows send.</p>
  *
  * <p>The active core index is the mirror image: persisted and
- * {@code copyOnDeath} too, but <b>synced</b> - the selector strip (#71)
+ * {@code copyOnDeath} too, but <b>synced</b> - the curios bar
  * renders its frame from it, so NeoForge ships it to the owning client on
  * login and on every write ({@code setData} syncs automatically).</p>
  */
