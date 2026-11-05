@@ -29,7 +29,7 @@ public final class PseudocoreCurios {
     /**
      * The slot's capacity ({@code curios/slots/pseudocore.json} "size",
      * #71 - the party of six). A constant like {@link #SLOT_ID}: the
-     * client's selector strip, the death search and the gametests all
+     * bar's cells, the death search and the gametests all
      * lay out exactly this many slots, and none of them should read
      * Curios data to learn the number.
      */
@@ -48,8 +48,6 @@ public final class PseudocoreCurios {
             // Death-preserve's client half (#14): tint + tooltip - the same
             // dist discipline for the same reason.
             org.bitwisemadness.pseudocore.curios.client.DeathCoreClient.register(modBus);
-            // The selector strip (#71): client HUD, same dist discipline.
-            org.bitwisemadness.pseudocore.curios.client.SelectorStrip.register(modBus);
         }
         LOGGER.info("Pseudocore Curios initialized");
     }
