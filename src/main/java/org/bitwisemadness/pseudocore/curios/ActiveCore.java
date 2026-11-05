@@ -8,7 +8,7 @@ import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 /**
  * The active core (#71): which of the six Curios slots the press acts
- * on and the selector strip frames. The selection is server-authoritative
+ * on and the curios bar frames. The selection is server-authoritative
  * (a synced player attachment, see {@link ModAttachments}), but resolution
  * is a pure read - raw index clamped to the live slot count, falling back
  * to the first non-empty slot, so removing the active core can never

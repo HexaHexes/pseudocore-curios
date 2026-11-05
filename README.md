@@ -11,16 +11,17 @@ rather than in Lightman's Currency.
 
 ## What it does
 
-- Six Curios slots holding a party of cores (beast and dragon lines), with a
-  selector strip above the hotbar framing the active one - the core the
-  addon's own hotkey releases and recalls.
+- Six Curios slots holding a party of cores (beast and dragon lines); the
+  addon's own hotkey releases and recalls the active core.
 - Its own non-assignable ability-hotbar bar (`pseudocore_curios:curios`,
   optional - only with Ability Hotbar installed): six cells mirroring the
   Curios slots, the press verb seeded into each *filled* cell, and activating
   a cell release/recalls *that cell's* core - or, aimed at a mob, captures it
   into that core (the crosshair hint ships from Ability Hotbar alpha.36,
   which this addon pins; an aim arriving without a hint performs the
-  release/recall). The menu never lists the bar and empty cells stay empty.
+  release/recall). The menu never lists the bar, empty cells stay empty, and
+  - like the assignable bars - it renders only while it is the active bar
+  (the wheel cycles bars; the frame marks the resolved active core).
 - A rebindable hotkey (default the `` ` `` key) that releases the active
   core's stored mob at the player's position, and recalls it again. Recall
   reuses Pseudocore's capture paths, so every gate (ownership, tier limits,
