@@ -56,3 +56,26 @@ type = "required"
 versionRange = "[9,)"
 ordering = "AFTER"
 side = "BOTH"
+
+# Ability Core - required: the press definition, handler and availability
+# projection are this mod's core seam and nothing gates them (unlike the
+# bar below). Floor = alpha.39, the first build with the 9-arg
+# AbilityDefinition constructor this bridge calls (#88's recorded
+# migration); CI compiles and gates against alpha.42.
+[[dependencies.${mod_id}]]
+modId = "ability_core"
+type = "required"
+versionRange = "[1.0.0-alpha.39,)"
+ordering = "AFTER"
+side = "BOTH"
+
+# Ability Hotbar - optional: the curios bar. Every call site is gated on
+# CuriosBarBridge.isLoaded() (the register and seed events), so the mod
+# runs without it. Floor = alpha.47, the version this repo pins and gates
+# against (state-defaulted selection frame era).
+[[dependencies.${mod_id}]]
+modId = "ability_hotbar"
+type = "optional"
+versionRange = "[1.0.0-alpha.47,)"
+ordering = "AFTER"
+side = "BOTH"
