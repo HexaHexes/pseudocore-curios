@@ -71,11 +71,14 @@ side = "BOTH"
 
 # Ability Hotbar - optional: the curios bar. Every call site is gated on
 # CuriosBarBridge.isLoaded() (the register and seed events), so the mod
-# runs without it. Floor = alpha.47, the version this repo pins and gates
-# against (state-defaulted selection frame era).
+# runs without it. Floor = alpha.50, the first build with the
+# supplier-less registerContentBar this bridge calls (the alpha.50
+# reshape, hotbar#120's resolution); 47-49 carry only the removed
+# supplier shape and would crash this call. CI and the pack gate
+# against alpha.53.
 [[dependencies.${mod_id}]]
 modId = "ability_hotbar"
 type = "optional"
-versionRange = "[1.0.0-alpha.47,)"
+versionRange = "[1.0.0-alpha.50,)"
 ordering = "AFTER"
 side = "BOTH"

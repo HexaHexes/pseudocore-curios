@@ -161,7 +161,7 @@ dependencies {
     // alpha.47 is the first build carrying hotbar#114's one-call content-bar
     // helpers (registerContentBar, seedAll) and hotbar#115's state-supplied
     // default selection frame, which this addon now uses.
-    def abilityHotbarVersion = '1.0.0-alpha.47'
+    def abilityHotbarVersion = '1.0.0-alpha.53'
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"

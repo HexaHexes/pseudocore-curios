@@ -3,7 +3,9 @@ package org.bitwisemadness.pseudocore.curios.compat;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModList;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.bitwisemadness.abilityhotbar.content.HotbarContentProviders;
 import org.bitwisemadness.abilityhotbar.registry.AbilityBarScopes;
 import org.bitwisemadness.abilityhotbar.state.SeededAssignments;
@@ -50,25 +52,26 @@ public final class CuriosBarBridge {
 
     /**
      * Register the bar, press's scope and the cell provider - common
-     * setup, once, through Ability Hotbar's one-call content-bar helper
-     * (hotbar#114). The helper registers the bar first (so the scope call
-     * below validates it), constructs the provider <b>only on the
-     * client</b> (the dist-cleaner trap it exists to remove), and logs the
-     * registration natively - so this class no longer carries the local
-     * debug line. The {@code registered} latch keeps the scope call, which
-     * has no idempotence of its own, to a single pass.
+     * setup, once. The bar goes through Ability Hotbar's one-call helper
+     * (hotbar#114, reshaped in alpha.50 per hotbar#120: the supplier
+     * parameter is gone, because evaluating it on both distributions
+     * linked the client-only provider class on dedicated servers), so the
+     * provider half is registered here behind the dist gate instead: the
+     * bar registers on both distributions (the scope call below needs it
+     * live), the provider only on the client, where its class may load.
+     * The {@code registered} latch keeps the scope call, which has no
+     * idempotence of its own, to a single pass.
      */
     public static void register() {
         if (registered) {
             return;
         }
         registered = true;
-        // A lambda, not `CuriosBarContentProvider::new`: the method
-        // reference resolves the client-only class at the lambda bootstrap
-        // the server runs (dist-cleaner abort); the body resolves lazily.
-        HotbarContentProviders.registerContentBar(CURIO_BAR, BAR_NAME_KEY,
-                () -> new CuriosBarContentProvider());
+        HotbarContentProviders.registerContentBar(CURIO_BAR, BAR_NAME_KEY);
         AbilityBarScopes.register(AbilityCoreBridge.PRESS_ID, CURIO_BAR);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            HotbarContentProviders.register(CURIO_BAR, new CuriosBarContentProvider());
+        }
     }
 
     /**
