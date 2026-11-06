@@ -17,6 +17,7 @@ import org.bitwisemadness.abilitycore.api.ActivationOutcome;
 import org.bitwisemadness.abilitycore.api.ActivationRequest;
 import org.bitwisemadness.abilitycore.api.ActivationResult;
 import org.bitwisemadness.abilitycore.api.ActivationType;
+import org.bitwisemadness.abilitycore.api.AmountResolvers;
 import org.bitwisemadness.abilitycore.api.AvailabilityProviders;
 import org.bitwisemadness.abilitycore.api.AvailabilityState;
 import org.bitwisemadness.abilitycore.api.ChargingModel;
@@ -83,7 +84,10 @@ public final class AbilityCoreBridge {
      * One definition: INSTANT, the core category, the copper placeholder icon.
      * No costs under core's default {@code all} strategy: the press charges
      * natively in its own pipeline (#11/#15), and core only refuses an empty
-     * list for EXTERNAL abilities - which this one is not.
+     * list for EXTERNAL abilities - which this one is not. The amount
+     * resolver is core's built-in {@code static} identity - the ninth
+     * constructor argument since core alpha.39 (ability-core#103/#104) -
+     * so the nominal costs are priced per request unchanged.
      */
     private static void registerOne(RegisterEvent event, ResourceLocation id,
                                     String displayKey, Set<String> tags) {
@@ -97,6 +101,7 @@ public final class AbilityCoreBridge {
                         ActivationType.INSTANT,
                         List.of(),
                         ConsumptionStrategies.ALL,
+                        AmountResolvers.STATIC,
                         tags,
                         Map.of()));
     }

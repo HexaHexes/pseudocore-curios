@@ -155,7 +155,9 @@ dependencies {
     // AbilityDefinition shape this addon registers against - alpha.34 (#97)
     // swapped the cost for a list and alpha.35 (#98) added the strategy, so
     // every boot against >= 34 died on the removed 7-arg constructor.
-    def abilityCoreVersion = '1.0.0-alpha.38'
+    // Pack runs alpha.42; 39+ is required (the 9-arg AbilityDefinition
+    // constructor with the amount resolver, #88's recorded migration).
+    def abilityCoreVersion = '1.0.0-alpha.42'
     // alpha.47 is the first build carrying hotbar#114's one-call content-bar
     // helpers (registerContentBar, seedAll) and hotbar#115's state-supplied
     // default selection frame, which this addon now uses.
