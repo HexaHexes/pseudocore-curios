@@ -652,7 +652,7 @@ public final class PseudocoreCuriosGameTests {
     public static void deathSaveWithoutTheEnchantmentLeavesTheKillAlone(GameTestHelper helper) {
         var player = mockPlayer(helper);
         var cow = helper.spawn(EntityType.COW, 1, 1, 1);
-        // releasedSlotCore carries only wild_capture - no preservation - so
+        // releasedSlotCore carries only hunters_boon - no preservation - so
         // this probe is exactly the "core without the enchantment" case (#67).
         ItemStack stack = releasedSlotCore(helper, player, cow);
         UUID mob = stampedMob(helper, player, stack);
@@ -1651,7 +1651,7 @@ public final class PseudocoreCuriosGameTests {
      * dropped rather than rejected.
      */
     /**
-     * A core carrying {@code wild_capture} (#159's universal gate): every
+     * A core carrying {@code hunters_boon} (#159's universal gate): every
      * probe in this suite captures untamed mobs, so every probe core opens
      * the wild axis. The enchantment is inert for the refusals these tests
      * actually pin (anti-theft, already-full, gates) - it only ever opens
@@ -1661,7 +1661,7 @@ public final class PseudocoreCuriosGameTests {
         ItemStack stack = new ItemStack(item);
         var holder = helper.getLevel().registryAccess()
                 .lookupOrThrow(Registries.ENCHANTMENT)
-                .getOrThrow(ModEnchantments.WILD_CAPTURE);
+                .getOrThrow(ModEnchantments.HUNTERS_BOON);
         stack.enchant(holder, 1);
         return stack;
     }
