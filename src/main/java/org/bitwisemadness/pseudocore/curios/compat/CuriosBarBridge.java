@@ -3,12 +3,9 @@ package org.bitwisemadness.pseudocore.curios.compat;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModList;
-import net.neoforged.fml.loading.FMLEnvironment;
 import org.bitwisemadness.abilityhotbar.content.HotbarContentProviders;
 import org.bitwisemadness.abilityhotbar.registry.AbilityBarScopes;
-import org.bitwisemadness.abilityhotbar.registry.HotbarRegistry;
 import org.bitwisemadness.abilityhotbar.state.SeededAssignments;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
@@ -53,54 +50,45 @@ public final class CuriosBarBridge {
 
     /**
      * Register the bar, press's scope and the cell provider - common
-     * setup, once. Order is load-bearing: the provider registration
-     * validates the bar registration. All three APIs are documented as
-     * setup-time and distribution-safe to call (the provider is only
-     * ever <em>invoked</em> client-side, per hotbar#83's contract).
+     * setup, once, through Ability Hotbar's one-call content-bar helper
+     * (hotbar#114). The helper registers the bar first (so the scope call
+     * below validates it), constructs the provider <b>only on the
+     * client</b> (the dist-cleaner trap it exists to remove), and logs the
+     * registration natively - so this class no longer carries the local
+     * debug line. The {@code registered} latch keeps the scope call, which
+     * has no idempotence of its own, to a single pass.
      */
     public static void register() {
         if (registered) {
             return;
         }
         registered = true;
-        HotbarRegistry.register(CURIO_BAR, BAR_NAME_KEY, false);
+        // A lambda, not `CuriosBarContentProvider::new`: the method
+        // reference resolves the client-only class at the lambda bootstrap
+        // the server runs (dist-cleaner abort); the body resolves lazily.
+        HotbarContentProviders.registerContentBar(CURIO_BAR, BAR_NAME_KEY,
+                () -> new CuriosBarContentProvider());
         AbilityBarScopes.register(AbilityCoreBridge.PRESS_ID, CURIO_BAR);
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            // Link-safety: the provider reads Minecraft's player, and the
-            // JVM verifies whole classes at first use - constructing it
-            // server-side trips the dist cleaner (FMLCommonSetup abort).
-            HotbarContentProviders.register(CURIO_BAR, new CuriosBarContentProvider());
-        }
-        // Diagnostic (#79 follow-up): this line in debug.log is the proof the
-        // bar entered HotbarRegistry.all() - the wheel cycle can only reach
-        // what registration put there.
-        PseudocoreCurios.LOGGER.debug("Curios bar registered (provider registered: {})",
-                FMLEnvironment.dist == Dist.CLIENT);
     }
 
     /**
-     * Seed the whole bar from the live Curios slots (#72): one seed per
-     * slot - a core's slot gets {@code press}, an empty slot is cleared.
+     * Seed the whole bar from the live Curios slots (#72) in one pass
+     * (hotbar#114's {@code seedAll}: validated up front so a bad count
+     * mutates nothing, one persist, one snapshot echo instead of one per
+     * cell) - a core's slot gets {@code press}, an empty slot is cleared.
      * Curios is the source of truth, so this runs on login and on every
-     * {@code CurioChangeEvent} for our slot; hotbar#92 makes a re-seed a
-     * plain overwrite (idempotent and authoritative). Each
-     * {@link ServerPlayer} seed echoes the snapshot itself - six small
-     * echoes beat hand-driving the state loop and one send for the sake
-     * of one packet.
+     * {@code CurioChangeEvent} for our slot; the overwrite is idempotent
+     * and authoritative, and the seed is logged natively by the helper.
      */
     public static void seed(ServerPlayer player) {
         if (!isLoaded()) {
             return;
         }
-        for (int slot = 0; slot < PseudocoreCurios.SLOT_COUNT; slot++) {
+        SeededAssignments.seedAll(player, CURIO_BAR, PseudocoreCurios.SLOT_COUNT, slot -> {
             ItemStack stack = ActiveCore.slotStack(player, slot);
-            String ability = ReleaseRecallAction.isCore(stack.getItem())
+            return ReleaseRecallAction.isCore(stack.getItem())
                     ? AbilityCoreBridge.PRESS_ID.toString()
                     : null;
-            SeededAssignments.seed(player, CURIO_BAR, slot, ability);
-            // Diagnostic (#79 follow-up): six of these per login prove the
-            // seed ran; a missing press on a filled slot names the culprit.
-            PseudocoreCurios.LOGGER.debug("Seeding curios bar slot {} with {}", slot, ability);
-        }
+        });
     }
 }

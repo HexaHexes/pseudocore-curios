@@ -152,8 +152,9 @@ dependencies {
     // doctrine keeps that file for version bumps only (ci.yml), so pins ride
     // with the dependency that needs them - the pattern ability-hotbar uses.
     def abilityCoreVersion = '1.0.0-alpha.15'
-    // alpha.47 is the first build carrying hotbar#115's state-supplied default
-    // selection frame, which this provider now relies on (it names none).
+    // alpha.47 is the first build carrying hotbar#114's one-call content-bar
+    // helpers (registerContentBar, seedAll) and hotbar#115's state-supplied
+    // default selection frame, which this addon now uses.
     def abilityHotbarVersion = '1.0.0-alpha.47'
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
