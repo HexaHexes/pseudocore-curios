@@ -158,10 +158,11 @@ dependencies {
     // Pack runs alpha.42; 39+ is required (the 9-arg AbilityDefinition
     // constructor with the amount resolver, #88's recorded migration).
     def abilityCoreVersion = '1.0.0-alpha.42'
-    // alpha.47 is the first build carrying hotbar#114's one-call content-bar
-    // helpers (registerContentBar, seedAll) and hotbar#115's state-supplied
-    // default selection frame, which this addon now uses.
-    def abilityHotbarVersion = '1.0.0-alpha.53'
+    // Floor is alpha.47 (hotbar#114's one-call content-bar helpers +
+    // #115's state-supplied default frame); alpha.50 added #124's
+    // supplier-less registerContentBar this addon now calls. The pin
+    // tracks the latest release the gate has proven against.
+    def abilityHotbarVersion = '1.0.0-alpha.55'
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
