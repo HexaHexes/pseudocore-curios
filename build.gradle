@@ -151,7 +151,11 @@ dependencies {
     // Dependency pins live here rather than in gradle.properties: the version
     // doctrine keeps that file for version bumps only (ci.yml), so pins ride
     // with the dependency that needs them - the pattern ability-hotbar uses.
-    def abilityCoreVersion = '1.0.0-alpha.15'
+    // alpha.38 is what the fleet runs (pseudocore-curios#88): the pin whose
+    // AbilityDefinition shape this addon registers against - alpha.34 (#97)
+    // swapped the cost for a list and alpha.35 (#98) added the strategy, so
+    // every boot against >= 34 died on the removed 7-arg constructor.
+    def abilityCoreVersion = '1.0.0-alpha.38'
     // alpha.47 is the first build carrying hotbar#114's one-call content-bar
     // helpers (registerContentBar, seedAll) and hotbar#115's state-supplied
     // default selection frame, which this addon now uses.

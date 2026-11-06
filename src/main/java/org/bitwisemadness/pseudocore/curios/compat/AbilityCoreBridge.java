@@ -1,5 +1,6 @@
 package org.bitwisemadness.pseudocore.curios.compat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.resources.ResourceLocation;
@@ -19,6 +20,7 @@ import org.bitwisemadness.abilitycore.api.ActivationType;
 import org.bitwisemadness.abilitycore.api.AvailabilityProviders;
 import org.bitwisemadness.abilitycore.api.AvailabilityState;
 import org.bitwisemadness.abilitycore.api.ChargingModel;
+import org.bitwisemadness.abilitycore.api.ConsumptionStrategies;
 import org.bitwisemadness.abilitycore.api.Metric;
 import org.bitwisemadness.abilitycore.api.TargetContext;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
@@ -77,7 +79,12 @@ public final class AbilityCoreBridge {
         registerOne(event, PRESS_ID, "pseudocore_curios.ability.press", Set.of("core", "press"));
     }
 
-    /** One definition: INSTANT, the core category, the copper placeholder icon. */
+    /**
+     * One definition: INSTANT, the core category, the copper placeholder icon.
+     * No costs under core's default {@code all} strategy: the press charges
+     * natively in its own pipeline (#11/#15), and core only refuses an empty
+     * list for EXTERNAL abilities - which this one is not.
+     */
     private static void registerOne(RegisterEvent event, ResourceLocation id,
                                     String displayKey, Set<String> tags) {
         event.register(org.bitwisemadness.abilitycore.registry.AbilityRegistries
@@ -88,7 +95,8 @@ public final class AbilityCoreBridge {
                                 "textures/item/copper_pseudocore.png"),
                         ResourceLocation.fromNamespaceAndPath(PseudocoreCurios.MOD_ID, "core"),
                         ActivationType.INSTANT,
-                        null,
+                        List.of(),
+                        ConsumptionStrategies.ALL,
                         tags,
                         Map.of()));
     }
