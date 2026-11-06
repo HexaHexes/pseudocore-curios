@@ -157,7 +157,7 @@ dependencies {
     // every boot against >= 34 died on the removed 7-arg constructor.
     // Pack runs alpha.42; 39+ is required (the 9-arg AbilityDefinition
     // constructor with the amount resolver, #88's recorded migration).
-    def abilityCoreVersion = '1.0.0-alpha.44'
+    def abilityCoreVersion = '1.0.0-alpha.45'
     // Floor is alpha.47 (hotbar#114's one-call content-bar helpers +
     // #115's state-supplied default frame); alpha.50 added #124's
     // supplier-less registerContentBar this addon now calls. The pin

@@ -1159,6 +1159,11 @@ public final class PseudocoreCuriosGameTests {
                         == org.bitwisemadness.abilitycore.api.ActivationType.INSTANT,
                 "the press must be an instant ability");
 
+        check(org.bitwisemadness.abilitycore.api.CooldownOwners.ownerOf(
+                        org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID)
+                        == org.bitwisemadness.abilitycore.api.CooldownOwners.Owner.EXTERNAL,
+                "press must use core's default fixed cooldown handler (alpha.45)");
+
         var player = mockPlayer(helper);
 
         // Empty slot -> core's UNAVAILABLE vocabulary (the native path's answer).

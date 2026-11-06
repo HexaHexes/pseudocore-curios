@@ -24,6 +24,7 @@ import org.bitwisemadness.abilitycore.api.AvailabilityProviders;
 import org.bitwisemadness.abilitycore.api.AvailabilityState;
 import org.bitwisemadness.abilitycore.api.ChargingModel;
 import org.bitwisemadness.abilitycore.api.ConsumptionStrategies;
+import org.bitwisemadness.abilitycore.api.CooldownOwners;
 import org.bitwisemadness.abilitycore.api.Metric;
 import org.bitwisemadness.abilitycore.api.TargetContext;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
@@ -120,6 +121,10 @@ public final class AbilityCoreBridge {
         handlersRegistered = true;
         AbilityCore.HANDLERS.register(PRESS_ID, AbilityCoreBridge::press, ChargingModel.NATIVE);
         AvailabilityProviders.declare(PRESS_ID, AbilityCoreBridge::pressAvailability);
+        // Cooldown moves to core's default fixed handler (alpha.45): one
+        // in-memory window shared by the pipeline, the hotkey, the air
+        // click and the clear gesture - the #69 invariant, now core's store.
+        CooldownOwners.declareExternal(PRESS_ID, ReleaseRecallAction.COOLDOWN_TICKS);
         // The unlock contract's read seam (core#117): having press IS
         // wearing an active core - hotbar#135's menu and assignment
         // validation ask core instead of this addon.

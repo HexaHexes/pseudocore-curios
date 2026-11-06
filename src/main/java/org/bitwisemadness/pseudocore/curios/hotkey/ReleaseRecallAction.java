@@ -1,7 +1,5 @@
 package org.bitwisemadness.pseudocore.curios.hotkey;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,7 +15,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
+import org.bitwisemadness.abilitycore.api.CooldownContract;
+import org.bitwisemadness.abilitycore.api.CooldownOwners;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
+import org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageRecord;
 import org.bitwisemadness.pseudocore.curios.linkage.ModAttachments;
@@ -71,16 +72,6 @@ public final class ReleaseRecallAction {
 
     /** How long one press locks the key: 20 ticks, a short anti-spam bar. */
     public static final long COOLDOWN_TICKS = 20L;
-
-    /**
-     * Last press time per player, read against the level's game time.
-     *
-     * <p>In-memory on purpose: a cooldown is session state, it must not follow
-     * the player through death or relog, and entries are bounded by the
-     * server's unique players per session - deliberately not worth an
-     * attachment.</p>
-     */
-    private static final Map<UUID, Long> LAST_USE = new HashMap<>();
 
     private ReleaseRecallAction() {
     }
@@ -211,33 +202,38 @@ public final class ReleaseRecallAction {
      * <b>remembers the press the moment it passes</b> - so no trigger can
      * probe release gates faster than the window allows. Callers message
      * the refusal; this method stays silent by design.
+     *
+     * <p>The store is core's default fixed handler (declareExternal,
+     * alpha.45): one in-memory window - session state that never follows
+     * the player through death or relog - shared by every trigger and the
+     * bar's overlay alike. The pipeline press also starts the same window
+     * post-activation, same tick and same value, so the two starts cannot
+     * drift; the non-pipeline triggers have no pipeline, so this stays
+     * their start site.</p>
      */
     static Refusal checkCooldown(ServerPlayer player) {
-        long now = player.level().getGameTime();
-        Long last = LAST_USE.get(player.getUUID());
-        if (last != null && now - last < COOLDOWN_TICKS) {
+        var tracker = CooldownOwners.trackerFor(AbilityCoreBridge.PRESS_ID)
+                .orElseThrow(() -> new IllegalStateException(
+                        "press cooldown must be declared - core's default fixed handler"));
+        if (tracker.remainingTicks(AbilityCoreBridge.PRESS_ID, player) > 0L) {
             return Refusal.COOLDOWN;
         }
-        LAST_USE.put(player.getUUID(), now);
+        tracker.start(AbilityCoreBridge.PRESS_ID, player, COOLDOWN_TICKS);
         return null;
     }
 
     /**
      * The shared throttle as the ability bar's overlay progress (#69):
      * 0.0 ready, 1.0 just pressed - read-only, never arms or moves the
-     * window. Core's availability contract renders this exact number, so
-     * the bar can never disagree with the hotkey's own cooldown.
+     * window. Core's availability contract renders this exact number off
+     * core's own store, so the bar can never disagree with the hotkey's
+     * own cooldown.
      */
     public static float cooldownProgress(ServerPlayer player) {
-        Long last = LAST_USE.get(player.getUUID());
-        if (last == null) {
-            return 0.0F;
-        }
-        long remaining = COOLDOWN_TICKS - (player.level().getGameTime() - last);
-        if (remaining <= 0L) {
-            return 0.0F;
-        }
-        return (float) remaining / (float) COOLDOWN_TICKS;
+        return CooldownContract.remaining(AbilityCoreBridge.PRESS_ID, player)
+                .map(duration -> (float) duration.toMillis()
+                        / (float) (COOLDOWN_TICKS * 50L))
+                .orElse(0.0F);
     }
 
     /**
