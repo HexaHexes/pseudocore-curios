@@ -2,6 +2,7 @@ package org.bitwisemadness.pseudocore.curios.compat;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,6 +14,7 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 import org.bitwisemadness.abilitycore.AbilityCore;
 import org.bitwisemadness.abilitycore.api.AbilityAvailability;
 import org.bitwisemadness.abilitycore.api.AbilityDefinition;
+import org.bitwisemadness.abilitycore.api.AbilityUnlocks;
 import org.bitwisemadness.abilitycore.api.ActivationOutcome;
 import org.bitwisemadness.abilitycore.api.ActivationRequest;
 import org.bitwisemadness.abilitycore.api.ActivationResult;
@@ -118,6 +120,20 @@ public final class AbilityCoreBridge {
         handlersRegistered = true;
         AbilityCore.HANDLERS.register(PRESS_ID, AbilityCoreBridge::press, ChargingModel.NATIVE);
         AvailabilityProviders.declare(PRESS_ID, AbilityCoreBridge::pressAvailability);
+        // The unlock contract's read seam (core#117): having press IS
+        // wearing an active core - hotbar#135's menu and assignment
+        // validation ask core instead of this addon.
+        AbilityUnlocks.declare(PRESS_ID, (player, id) -> player == null
+                ? Optional.empty()
+                : Optional.of(hasActiveCore(player)));
+    }
+
+    /**
+     * Whether the player has an active core equipped - press's possession,
+     * shared by the overlay's verdict and the unlock provider (core#117).
+     */
+    public static boolean hasActiveCore(Player player) {
+        return ReleaseRecallAction.isCore(ActiveCore.resolveStack(player).getItem());
     }
 
     /**
@@ -211,7 +227,7 @@ public final class AbilityCoreBridge {
         Metric<Double> cooldown = player instanceof ServerPlayer serverPlayer
                 ? Metric.known((double) ReleaseRecallAction.cooldownProgress(serverPlayer))
                 : Metric.unknown();
-        boolean hasCore = ReleaseRecallAction.isCore(ActiveCore.resolveStack(player).getItem());
+        boolean hasCore = hasActiveCore(player);
         return new AbilityAvailability(
                 cooldown,
                 Metric.unknown(),
