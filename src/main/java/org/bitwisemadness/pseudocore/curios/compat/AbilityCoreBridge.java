@@ -27,6 +27,7 @@ import org.bitwisemadness.abilitycore.api.ConsumptionStrategies;
 import org.bitwisemadness.abilitycore.api.CooldownOwners;
 import org.bitwisemadness.abilitycore.api.Metric;
 import org.bitwisemadness.abilitycore.api.TargetContext;
+import org.bitwisemadness.abilitycore.api.VisibilityHandlers;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
@@ -131,6 +132,10 @@ public final class AbilityCoreBridge {
         AbilityUnlocks.declare(PRESS_ID, (player, id) -> player == null
                 ? Optional.empty()
                 : Optional.of(hasActiveCore(player)));
+        // Menu visibility (core#124): press exists only on the curios bar
+        // it is scoped to - a provider-bar-exclusive ability is never
+        // listed by the menu (hotbar#153), scope or no scope.
+        VisibilityHandlers.declare(PRESS_ID, VisibilityHandlers.NEVER);
     }
 
     /**
