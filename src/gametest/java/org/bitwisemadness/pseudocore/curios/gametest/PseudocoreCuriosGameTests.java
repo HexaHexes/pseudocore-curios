@@ -1164,6 +1164,10 @@ public final class PseudocoreCuriosGameTests {
                         == org.bitwisemadness.abilitycore.api.CooldownOwners.Owner.EXTERNAL,
                 "press must use core's default fixed cooldown handler (alpha.45)");
 
+        check(!org.bitwisemadness.abilitycore.api.VisibilityHandlers.visible(
+                        null, org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge.PRESS_ID),
+                "press is exclusive to its provider bar - never menu-visible (core#124)");
+
         var player = mockPlayer(helper);
 
         // Empty slot -> core's UNAVAILABLE vocabulary (the native path's answer).
