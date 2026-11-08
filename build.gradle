@@ -151,18 +151,17 @@ dependencies {
     // Dependency pins live here rather than in gradle.properties: the version
     // doctrine keeps that file for version bumps only (ci.yml), so pins ride
     // with the dependency that needs them - the pattern ability-hotbar uses.
-    // alpha.38 is what the fleet runs (pseudocore-curios#88): the pin whose
-    // AbilityDefinition shape this addon registers against - alpha.34 (#97)
-    // swapped the cost for a list and alpha.35 (#98) added the strategy, so
-    // every boot against >= 34 died on the removed 7-arg constructor.
-    // Pack runs alpha.42; 39+ is required (the 9-arg AbilityDefinition
-    // constructor with the amount resolver, #88's recorded migration).
-    def abilityCoreVersion = '1.0.0-alpha.48'
+    // Floor is 39, the 9-arg AbilityDefinition constructor with the amount
+    // resolver (#88's recorded migration): alpha.34 (#97) swapped the cost
+    // for a list and alpha.35 (#98) added the strategy, so every boot against
+    // >= 34 died on the removed 7-arg constructor. The pin tracks the fleet's
+    // current release.
+    def abilityCoreVersion = '1.0.0-alpha.50'
     // Floor is alpha.47 (hotbar#114's one-call content-bar helpers +
     // #115's state-supplied default frame); alpha.50 added #124's
     // supplier-less registerContentBar this addon now calls. The pin
     // tracks the latest release the gate has proven against.
-    def abilityHotbarVersion = '1.0.0-alpha.55'
+    def abilityHotbarVersion = '1.0.0-alpha.79'
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
