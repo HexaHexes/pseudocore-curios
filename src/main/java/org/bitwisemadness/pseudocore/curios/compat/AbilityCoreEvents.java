@@ -26,9 +26,17 @@ public final class AbilityCoreEvents {
 
     @SubscribeEvent
     public static void onRegisterAbilityRegistry(RegisterEvent event) {
-        if (AbilityCoreBridge.isLoaded()) {
-            AbilityCoreBridge.registerDefinitions(event);
+        if (!AbilityCoreBridge.isLoaded()) {
+            return;
         }
+        // exactly one registry: press's definition and mastery declaration
+        // ride core's abilities key - cross-key dispatch is a silent no-op
+        // for registration, but a duplicate declaration for mastery
+        if (!event.getRegistryKey().equals(
+                org.bitwisemadness.abilitycore.registry.AbilityRegistries.ABILITY_REGISTRY_KEY)) {
+            return;
+        }
+        AbilityCoreBridge.registerDefinitions(event);
     }
 
     @SubscribeEvent

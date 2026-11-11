@@ -65,7 +65,12 @@ side = "BOTH"
 [[dependencies.${mod_id}]]
 modId = "ability_core"
 type = "required"
-versionRange = "[1.0.0-alpha.39,)"
+# alpha.01 of the 1.0.2 line is the floor: it is where the mastery
+# contract (REQ-CORE-12, core#137) ships, and press's declaration and
+# award sites call into it. The floor also fails loudly: a pack on a
+# pre-1.0.2 core gets a dependency error naming this mod instead of a
+# NoSuchMethodError at RegisterEvent (the 2026-11-06 crash class).
+versionRange = "[1.0.2-alpha.01,)"
 ordering = "AFTER"
 side = "BOTH"
 

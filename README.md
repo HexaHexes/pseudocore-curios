@@ -31,6 +31,11 @@ rather than in Lightman's Currency.
   blacklist) re-applies. Right-clicking air with a core in hand does the same
   press; sneak-right-click clears it (`release` by default, a confirmed
   `destroy` on request).
+- Mastery (REQ-CORE-12): the `press` ability opts into Ability Core's
+  experience system - every successful press grants it XP that packs retune
+  through core's `mastery_spec` datapack overlay. Each surface awards exactly
+  once: bar cells through the activation pipeline's tail, the hotkey and the
+  air right-click at their own funnels (they never enter the pipeline).
 - Death-preserve (needs the `preservation` enchantment on the core): a tracked
   mob about to die to a configured damage source is saved into the core that
   released it instead - searched slot -> inventory -> corpse, capture gates

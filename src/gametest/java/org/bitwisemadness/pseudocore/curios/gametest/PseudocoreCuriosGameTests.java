@@ -35,10 +35,15 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.bitwisemadness.abilitycore.api.MasteryAwards;
+import org.bitwisemadness.abilitycore.api.MasteryDeclarations;
+import org.bitwisemadness.abilitycore.api.MasteryTarget;
+import org.bitwisemadness.abilitycore.api.MasteryTrigger;
 import org.bitwisemadness.pseudocore.curios.ActiveCore;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosConfig;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCuriosEvents;
+import org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge;
 import org.bitwisemadness.pseudocore.curios.death.DeadMobComponent;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
@@ -1763,6 +1768,37 @@ public final class PseudocoreCuriosGameTests {
         // restored - the same rule the retired tamedMobsOnly pin followed).
         org.bitwisemadness.pseudocore.util.TensuraBridge.writePools(player, 1.0E9D, 1.0E9D);
         return player;
+    }
+
+    /**
+     * Press mastery (REQ-CORE-12): press declares with the constant gain
+     * and the ACTIVATION trigger - self-only, effect-free; an award lands
+     * the declared gain on press's own target and an undeclared trigger
+     * grants nothing.
+     */
+    @GameTest(template = "empty")
+    public static void pressMasteryDeclaresAndGrants(GameTestHelper helper) {
+        check(MasteryDeclarations.has(AbilityCoreBridge.PRESS_ID),
+                "press must declare mastery at registration");
+        var spec = MasteryDeclarations.get(AbilityCoreBridge.PRESS_ID).orElseThrow();
+        check(Math.abs(spec.baseGain() - AbilityCoreBridge.PRESS_XP) < 1e-9,
+                "press grants the constant base gain");
+        check(spec.triggers().equals(java.util.Set.of(MasteryTrigger.ACTIVATION)),
+                "press declares the ACTIVATION trigger");
+        check(spec.shares().isEmpty(), "press routes to itself only");
+        check(spec.effects().isEmpty(), "press declares no effect axis yet");
+
+        var player = mockPlayer(helper);
+        var data = org.bitwisemadness.abilitycore.mastery.MasteryAttachments.data(player);
+        var ownKey = MasteryTarget.ability(AbilityCoreBridge.PRESS_ID).key();
+        MasteryAwards.award(player, AbilityCoreBridge.PRESS_ID, MasteryTrigger.ACTIVATION);
+        check(Math.abs(data.xp(ownKey) - AbilityCoreBridge.PRESS_XP) < 1e-9,
+                "the award lands the declared gain on press's own target");
+
+        MasteryAwards.award(player, AbilityCoreBridge.PRESS_ID, MasteryTrigger.KILL);
+        check(Math.abs(data.xp(ownKey) - AbilityCoreBridge.PRESS_XP) < 1e-9,
+                "KILL is not declared - no extra grant");
+        helper.succeed();
     }
 
     private static void check(boolean condition, String message) {
