@@ -6,7 +6,10 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.bitwisemadness.abilitycore.api.MasteryAwards;
+import org.bitwisemadness.abilitycore.api.MasteryTrigger;
 import org.bitwisemadness.pseudocore.curios.PseudocoreCurios;
+import org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 
 /**
@@ -45,7 +48,12 @@ public record ReleaseRecallC2S() implements CustomPacketPayload {
     public static void handle(ReleaseRecallC2S payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                ReleaseRecallAction.handle(player);
+                if (ReleaseRecallAction.handle(player) == null) {
+                    // the hotkey never enters core's pipeline - award here;
+                    // a null refusal is the press having happened (REQ-CORE-12)
+                    MasteryAwards.award(player, AbilityCoreBridge.PRESS_ID,
+                            MasteryTrigger.ACTIVATION);
+                }
             }
         });
     }

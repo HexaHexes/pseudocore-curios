@@ -25,6 +25,8 @@ import org.bitwisemadness.abilitycore.api.AvailabilityState;
 import org.bitwisemadness.abilitycore.api.ChargingModel;
 import org.bitwisemadness.abilitycore.api.ConsumptionStrategies;
 import org.bitwisemadness.abilitycore.api.CooldownOwners;
+import org.bitwisemadness.abilitycore.api.MasteryDeclarations;
+import org.bitwisemadness.abilitycore.api.MasterySpec;
 import org.bitwisemadness.abilitycore.api.Metric;
 import org.bitwisemadness.abilitycore.api.TargetContext;
 import org.bitwisemadness.abilitycore.api.VisibilityHandlers;
@@ -63,6 +65,9 @@ public final class AbilityCoreBridge {
     public static final ResourceLocation PRESS_ID = ResourceLocation.fromNamespaceAndPath(
             PseudocoreCurios.MOD_ID, "press");
 
+    /** XP one press grants (REQ-CORE-12); packs retune it via the datapack overlay. */
+    public static final double PRESS_XP = 10.0;
+
     private static boolean handlersRegistered;
 
     private AbilityCoreBridge() {
@@ -82,6 +87,10 @@ public final class AbilityCoreBridge {
      */
     public static void registerDefinitions(RegisterEvent event) {
         registerOne(event, PRESS_ID, "pseudocore_curios.ability.press", Set.of("core", "press"));
+        // REQ-CORE-12: press opts into mastery with a constant gain (packs
+        // retune it through core's overlay). The pipeline's tail grants bar
+        // presses; hotkey and air press award at their own funnels.
+        MasteryDeclarations.declare(PRESS_ID, MasterySpec.gained(PRESS_XP));
     }
 
     /**

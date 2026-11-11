@@ -7,6 +7,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import org.bitwisemadness.abilitycore.api.MasteryAwards;
+import org.bitwisemadness.abilitycore.api.MasteryTrigger;
+import org.bitwisemadness.pseudocore.curios.compat.AbilityCoreBridge;
 import org.bitwisemadness.pseudocore.curios.hotkey.ReleaseRecallAction;
 import org.bitwisemadness.pseudocore.curios.linkage.LinkageManager;
 import org.bitwisemadness.pseudocore.event.PseudocoreReleaseEvent;
@@ -106,7 +109,13 @@ public final class PseudocoreCuriosEvents {
                         .handle(player, event.getItemStack());
                 return;
             }
-            ReleaseRecallAction.press(player, event.getItemStack());
+            var refusal = ReleaseRecallAction.press(player, event.getItemStack());
+            if (refusal == null) {
+                // the air press never enters core's pipeline - award here;
+                // a null refusal is the press having happened (REQ-CORE-12)
+                MasteryAwards.award(player, AbilityCoreBridge.PRESS_ID,
+                        MasteryTrigger.ACTIVATION);
+            }
         }
     }
 }
