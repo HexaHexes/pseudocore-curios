@@ -156,12 +156,12 @@ dependencies {
     // for a list and alpha.35 (#98) added the strategy, so every boot against
     // >= 34 died on the removed 7-arg constructor. The pin tracks the fleet's
     // current release.
-    def abilityCoreVersion = '1.0.2-alpha.02'
+    def abilityCoreVersion = '1.1.0-alpha.07'
     // Floor is alpha.47 (hotbar#114's one-call content-bar helpers +
     // #115's state-supplied default frame); alpha.50 added #124's
     // supplier-less registerContentBar this addon now calls. The pin
     // tracks the latest release the gate has proven against.
-    def abilityHotbarVersion = '1.0.0-alpha.79'
+    def abilityHotbarVersion = '1.0.1-alpha.08'
     // The mod this addon is built on: the slot logic calls releaseContained,
     // tryCapture and TensuraBridge. Never bundled.
     compileOnly "org.bitwisemadness.pseudocore:pseudocore:${pseudocore_version}"
