@@ -6,8 +6,8 @@ and pulled in verbatim - **never hand-edit it.** Everything in this file is this
 repo's own and is edited freely; keep it aligned with the org rules rather than
 restating them.
 
-**Repo:** `HexaHexes/pseudocore-curios` - **Mod ID:** `pseudocore_curios` - **Branch:** `main`
-**Platform:** Minecraft 1.21.1 / NeoForge 21.1.259 / JDK 21
+**Repo:** `HexaHexes/pseudocore-curios` · **Mod ID:** `pseudocore_curios` · **Branch:** `neoforge-1.21.1` (the loader line; this is the default branch - no `main`)
+**Platform:** Minecraft 1.21.1 / NeoForge 21.1.259 / JDK 21 · **Jar:** `build/libs/pseudocore_curios-neoforge-1.21.1-<version>.jar`
 **Jar:** `build/libs/pseudocore_curios-<version>.jar`
 
 The Curios-slot companion to Pseudocore: a slot that holds a core, a rebindable
